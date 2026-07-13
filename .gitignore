@@ -1,0 +1,26 @@
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude
+.claude/
+
+# Backend (Java/Maven)
+fitness-backend/target/
+fitness-backend/.env
+fitness-backend/*.log
+
+# Frontend (Node/Vue)
+fitness-frontend/node_modules/
+fitness-frontend/dist/
+fitness-frontend/.env
+fitness-frontend/.env.local
+fitness-frontend/.env.*.local
+
+# Logs
+*.log

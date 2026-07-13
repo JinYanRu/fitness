@@ -1,0 +1,31 @@
+# 测试环境配置
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: true
+
+# OCR 服务配置（测试用 Mock 数据）
+ocr:
+  service:
+    rapid-url: http://localhost:8000
+    timeout: 30000
+
+# 大模型服务配置（测试用 Mock 数据）
+llm:
+  service:
+    api-url: https://mock-api.example.com
+    api-key: mock-api-key
+    model: mock-model
+    timeout: 30000

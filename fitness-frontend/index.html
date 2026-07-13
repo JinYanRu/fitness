@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>健身营养记录</title>
+  <script>
+    // UniApp H5 全局变量模拟
+    window.uni = {
+      navigateTo: (options) => {
+        console.log('navigateTo', options)
+        // 简单的路由跳转模拟
+        if (options.url) {
+          window.location.hash = options.url.replace('/pages', '')
+        }
+      },
+      navigateBack: () => {
+        console.log('navigateBack')
+        window.history.back()
+      },
+      switchTab: (options) => {
+        console.log('switchTab', options)
+        if (options.url) {
+          window.location.hash = options.url.replace('/pages', '').replace('/index/index', '').replace('/history/history', '/history')
+        }
+      },
+      showToast: (options) => {
+        console.log('showToast', options)
+        const toast = document.createElement('div')
+        toast.className = 'uni-toast'
+        toast.textContent = options.title || ''
+        toast.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(0,0,0,0.7);color:#fff;padding:10px 20px;border-radius:5px;z-index:9999;'
+        document.body.appendChild(toast)
+        setTimeout(() => toast.remove(), 1500)
+      },
+      showModal: (options) => {
+        console.log('showModal', options)
+        if (confirm(options.content || '')) {
+          options.success && options.success({ confirm: true })
+        } else {
+          options.success && options.success({ cancel: true })
+        }
+      },
+      chooseImage: async (options) => {
+        return new Promise((resolve, reject) => {
+          const input = document.createElement('input')
+          input.type = 'file'
+          input.accept = 'image/*'
+          input.style.display = 'none'
+          document.body.appendChild(input)
+          input.onchange = (e) => {
+            const file = e.target.files[0]
+            if (file) {
+              const reader = new FileReader()
+              reader.onload = (event) => {
+                const result = {
+                  tempFilePaths: [event.target.result],
+                  tempFiles: [{ path: event.target.result, size: file.size }]
+                }
+                options.success && options.success(result)
+                resolve(result)
+              }
+              reader.readAsDataURL(file)
+            }
+            input.remove()
+          }
+          input.click()
+        })
+      },
+      previewImage: (options) => {
+        console.log('previewImage', options)
+        // 简单的图片预览
+        window.open(options.urls[0], '_blank')
+      },
+      getStorageSync: (key) => {
+        return localStorage.getItem(key)
+      },
+      setStorageSync: (key, value) => {
+        localStorage.setItem(key, value)
+      },
+      removeStorageSync: (key) => {
+        localStorage.removeItem(key)
+      },
+      request: (options) => {
+        return fetch(options.url, {
+          method: options.method || 'GET',
+          headers: options.header || {},
+          body: options.method === 'POST' || options.method === 'PUT' ? JSON.stringify(options.data) : null
+        }).then(res => res.json()).then(data => {
+          options.success && options.success({ statusCode: 200, data })
+          return data
+        }).catch(err => {
+          options.fail && options.fail(err)
+          throw err
+        })
+      }
+    }
+
+    // getCurrentPages 模拟
+    window.getCurrentPages = () => [{
+      options: {}
+    }]
+  </script>
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
