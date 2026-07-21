@@ -33,6 +33,7 @@
         <span class="count">共 {{ myFoods.length }} 种食物</span>
         <div class="action-buttons">
           <button class="btn-ocr" @click="showOcrModal = true">📷 拍照添加</button>
+          <button class="btn-ai" @click="showAiModal = true">🤖 AI识别</button>
           <button class="btn-add" @click="showAddModal = true">+ 手动添加</button>
         </div>
       </div>
@@ -43,6 +44,7 @@
         <p>暂无食物，点击上方按钮添加</p>
         <div class="empty-actions">
           <button class="btn-ocr-large" @click="showOcrModal = true">📷 拍照识别添加</button>
+          <button class="btn-ai-large" @click="showAiModal = true">🤖 AI识别添加</button>
           <button class="btn-add-large" @click="showAddModal = true">✏️ 手动输入添加</button>
         </div>
       </div>
@@ -247,6 +249,136 @@
         </div>
       </div>
     </div>
+
+    <!-- AI 识别弹窗 -->
+    <div v-if="showAiModal" class="modal">
+      <div class="modal-content modal-large">
+        <div class="modal-header">
+          <h3>🤖 AI 食谱识别</h3>
+          <button class="btn-close" @click="closeAiModal">×</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- 输入方式切换 -->
+          <div class="ai-tabs">
+            <div :class="['ai-tab', aiInputMode === 'text' ? 'active' : '']" @click="aiInputMode = 'text'">
+              📝 文本输入
+            </div>
+            <div :class="['ai-tab', aiInputMode === 'image' ? 'active' : '']" @click="aiInputMode = 'image'">
+              📷 拍照识别
+            </div>
+          </div>
+
+          <!-- 步骤指示器 -->
+          <div class="step-indicator">
+            <div class="step" :class="{ active: aiStep >= 1 }">
+              <div class="step-dot">1</div>
+              <span class="step-text">{{ aiInputMode === 'text' ? '输入食谱' : '选择图片' }}</span>
+            </div>
+            <div class="step-line" :class="{ active: aiStep >= 2 }"></div>
+            <div class="step" :class="{ active: aiStep >= 2 }">
+              <div class="step-dot">2</div>
+              <span class="step-text">AI 分析</span>
+            </div>
+            <div class="step-line" :class="{ active: aiStep >= 3 }"></div>
+            <div class="step" :class="{ active: aiStep >= 3 }">
+              <div class="step-dot">3</div>
+              <span class="step-text">确认保存</span>
+            </div>
+          </div>
+
+          <!-- 步骤1: 输入 -->
+          <div v-show="aiStep === 1" class="step-content">
+            <!-- 文本输入模式 -->
+            <div v-if="aiInputMode === 'text'" class="text-input-area">
+              <textarea
+                v-model="aiRecipeText"
+                class="recipe-textarea"
+                placeholder="请输入食谱内容，例如：
+手工鸡胸肉丸子：
+500g鸡胸肉
+5克味精
+5克盐
+10克淀粉
+..."
+                rows="8"
+              ></textarea>
+            </div>
+
+            <!-- 图片输入模式 -->
+            <div v-else class="image-input-area">
+              <ImagePicker
+                ref="aiImagePickerRef"
+                @change="handleAiImageChange"
+                @error="handleAiImageError"
+              />
+              <!-- 补充文本输入 -->
+              <div class="supplement-input">
+                <label class="supplement-label">补充说明（可选）</label>
+                <textarea
+                  v-model="aiSupplementText"
+                  class="supplement-textarea"
+                  placeholder="如有缺失信息可在此补充，例如：
+- 食谱名称
+- 食材用量
+- 烹饪方式等"
+                  rows="3"
+                ></textarea>
+              </div>
+            </div>
+
+            <div class="step-actions">
+              <button
+                class="btn-next"
+                :disabled="aiInputMode === 'text' ? !aiRecipeText.trim() : !aiSelectedImage"
+                @click="startAiParse"
+              >
+                下一步：AI 分析营养
+              </button>
+            </div>
+          </div>
+
+          <!-- 步骤2: AI 分析 -->
+          <div v-show="aiStep === 2" class="step-content">
+            <div v-if="aiInputMode === 'image'" class="image-preview-mini">
+              <img :src="aiSelectedImage" class="preview-img" />
+            </div>
+            <div class="ocr-status" v-if="isAiParsing">
+              <div class="loading-spinner"></div>
+              <span class="loading-text">AI 正在分析中...</span>
+            </div>
+            <div class="ocr-result" v-if="aiResult && !isAiParsing">
+              <NutritionForm
+                ref="aiFormRef"
+                :ocrResult="aiResult"
+                @update="handleAiFormUpdate"
+              />
+            </div>
+            <div class="step-actions" v-if="!isAiParsing">
+              <button class="btn-secondary" @click="resetAi">重新输入</button>
+              <button class="btn-primary" @click="goToAiConfirm" :disabled="!aiResult?.success">
+                下一步
+              </button>
+            </div>
+          </div>
+
+          <!-- 步骤3: 确认保存 -->
+          <div v-show="aiStep === 3" class="step-content">
+            <NutritionForm
+              ref="aiConfirmFormRef"
+              :initialData="aiFormData"
+              @update="handleAiFormUpdate"
+            />
+            <div class="step-actions">
+              <button class="btn-secondary" @click="aiStep = 2">返回修改</button>
+              <button class="btn-primary" @click="saveAiFood" :disabled="isAiSaving">
+                {{ isAiSaving ? '保存中...' : '保存到我的食物库' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -254,6 +386,7 @@
 import { ref, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { userFoodApi, commonFoodApi } from '@/services/api/food.js'
+import { aiApi } from '@/services/api/ai.js'
 import ImagePicker from '@/components/ImagePicker.vue'
 import NutritionForm from '@/components/NutritionForm.vue'
 import ocrManager from '@/services/ocr/init.js'
@@ -293,6 +426,21 @@ const ocrFormRef = ref(null)
 const confirmFormRef = ref(null)
 const ocrFormData = ref({})
 const isSaving = ref(false)
+
+// AI 识别添加
+const showAiModal = ref(false)
+const aiInputMode = ref('text') // 'text' 或 'image'
+const aiStep = ref(1)
+const aiRecipeText = ref('')
+const aiSupplementText = ref('') // 图片模式的补充文本
+const aiImagePickerRef = ref(null)
+const aiSelectedImage = ref('')
+const isAiParsing = ref(false)
+const aiResult = ref(null)
+const aiFormRef = ref(null)
+const aiConfirmFormRef = ref(null)
+const aiFormData = ref({})
+const isAiSaving = ref(false)
 
 // 加载我的食物库
 const loadMyFoods = async () => {
@@ -472,6 +620,107 @@ const closeOcrModal = () => {
   selectedImage.value = ''
   ocrResult.value = null
   ocrFormData.value = {}
+}
+
+// AI 识别相关方法
+const handleAiImageChange = (path) => {
+  aiSelectedImage.value = path
+}
+
+const handleAiImageError = (error) => {
+  console.error('AI 图片错误:', error)
+}
+
+const startAiParse = async () => {
+  aiStep.value = 2
+  isAiParsing.value = true
+  try {
+    let result
+    if (aiInputMode.value === 'text') {
+      // 文本模式：直接调用 AI 解析
+      const response = await aiApi.parseRecipe(aiRecipeText.value)
+      result = {
+        success: response.code === 200,
+        text: aiRecipeText.value,
+        foodInfo: response.data
+      }
+    } else {
+      // 图片模式：先 OCR 再 AI，带上补充文本
+      const response = await aiApi.parseRecipeImage(aiSelectedImage.value, aiSupplementText.value)
+      result = {
+        success: response.code === 200,
+        text: aiSupplementText.value,
+        foodInfo: response.data
+      }
+    }
+    aiResult.value = result
+  } catch (error) {
+    aiResult.value = { success: false, error: error.message || 'AI 解析失败' }
+  } finally {
+    isAiParsing.value = false
+  }
+}
+
+const resetAi = () => {
+  aiStep.value = 1
+  aiRecipeText.value = ''
+  aiSupplementText.value = ''
+  aiSelectedImage.value = ''
+  aiResult.value = null
+  if (aiInputMode.value === 'image') {
+    aiImagePickerRef.value?.clear()
+  }
+}
+
+const goToAiConfirm = () => {
+  if (aiFormRef.value?.validate?.()) {
+    aiFormData.value = { ...aiFormData.value, ...aiFormRef.value.getData() }
+    aiStep.value = 3
+  }
+}
+
+const handleAiFormUpdate = (data) => {
+  aiFormData.value = { ...aiFormData.value, ...data }
+}
+
+const saveAiFood = async () => {
+  isAiSaving.value = true
+  try {
+    const data = aiConfirmFormRef.value?.getData() || aiFormData.value
+    // 复用 OCR 的入库接口
+    await userFoodApi.createFromOcr({
+      foodName: data.foodName,
+      brand: data.brand || '',
+      servingSize: data.servingSize || 100,
+      servingUnit: data.servingUnit || 'g',
+      calories: data.calories,
+      protein: data.protein,
+      fat: data.fat,
+      carbohydrates: data.carbohydrates,
+      fiber: data.fiber,
+      sodium: data.sodium,
+      sugar: data.sugar,
+      remark: data.rawText || aiRecipeText.value || ''
+    })
+    alert('保存成功！')
+    closeAiModal()
+    loadMyFoods()
+  } catch (error) {
+    alert('保存失败: ' + error.message)
+  } finally {
+    isAiSaving.value = false
+  }
+}
+
+const closeAiModal = () => {
+  showAiModal.value = false
+  aiStep.value = 1
+  aiInputMode.value = 'text'
+  aiRecipeText.value = ''
+  aiSupplementText.value = ''
+  aiSelectedImage.value = ''
+  aiResult.value = null
+  aiFormData.value = {}
 }
 
 // 监听标签切换
@@ -886,4 +1135,105 @@ onMounted(() => {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-text { font-size: 14px; color: #666; margin-top: 10px; }
+
+/* AI 识别按钮样式 */
+.btn-ai {
+  padding: 6px 12px;
+  background: #9C27B0;
+  color: #fff;
+  border: none;
+  border-radius: 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.btn-ai-large {
+  padding: 14px 24px;
+  background: #9C27B0;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+/* AI 输入方式切换 */
+.ai-tabs {
+  display: flex;
+  background: #f5f5f5;
+  border-radius: 8px;
+  padding: 4px;
+  margin-bottom: 16px;
+}
+
+.ai-tab {
+  flex: 1;
+  padding: 10px;
+  text-align: center;
+  border-radius: 6px;
+  color: #666;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.ai-tab.active {
+  background: #fff;
+  color: #9C27B0;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* 文本输入区域 */
+.text-input-area {
+  margin-bottom: 16px;
+}
+
+.recipe-textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+
+.recipe-textarea:focus {
+  border-color: #9C27B0;
+}
+
+.image-input-area {
+  margin-bottom: 16px;
+}
+
+/* 补充文本输入 */
+.supplement-input {
+  margin-top: 12px;
+}
+
+.supplement-label {
+  display: block;
+  font-size: 13px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.supplement-textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  outline: none;
+  font-family: inherit;
+}
+
+.supplement-textarea:focus {
+  border-color: #9C27B0;
+}
 </style>

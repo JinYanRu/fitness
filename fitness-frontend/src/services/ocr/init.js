@@ -59,7 +59,7 @@ const defaultConfig = {
     baseUrl: '/api'  // 通过 Vite 代理访问后端
   },
   rapidocr: {
-    baseUrl: 'http://localhost:8000'
+    baseUrl: 'http://111.228.49.250:10265'
   },
   baidu: {
     apiKey: '',

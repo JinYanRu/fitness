@@ -19,7 +19,7 @@ spring:
 # OCR 服务配置（测试用 Mock 数据）
 ocr:
   service:
-    rapid-url: http://localhost:8000
+    rapid-url: http://111.228.49.250:10265
     timeout: 30000
 
 # 大模型服务配置（测试用 Mock 数据）

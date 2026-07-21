@@ -3,3 +3,4 @@
  */
 
 export { nutritionApi } from './nutrition.js'
+export { aiApi } from './ai.js'

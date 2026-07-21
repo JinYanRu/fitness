@@ -20,7 +20,7 @@ export default defineConfig({
       },
       // OCR 服务代理 (直接调用 RapidOCR - 可选)
       '/ocr-proxy': {
-        target: 'http://localhost:8000',
+        target: 'http://111.228.49.250:10265',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/ocr-proxy/, '')
       }

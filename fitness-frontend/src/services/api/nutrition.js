@@ -67,6 +67,14 @@ export const nutritionApi = {
    */
   getByDate(date) {
     return request.get(`/nutrition/daily/${date}`)
+  },
+
+  /**
+   * 获取指定日期的营养统计
+   * @param {string} date - 日期 (yyyy-MM-dd)
+   */
+  getStatsByDate(date) {
+    return request.get(`/nutrition/stats/${date}`)
   }
 }
 

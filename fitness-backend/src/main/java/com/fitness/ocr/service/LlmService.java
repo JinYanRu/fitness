@@ -25,6 +25,35 @@ public class LlmService {
 
     private final LlmProperties llmProperties;
 
+    /**
+     * 食物信息 JSON 模板（营养成分表解析和食谱解析共用）
+     */
+    private static final String FOOD_INFO_JSON_TEMPLATE = "{\n" +
+            "  \"id\": \"\",\n" +
+            "  \"name\": \"\",\n" +
+            "  \"brand\": \"\",\n" +
+            "  \"category\": \"\",\n" +
+            "  \"servingSize\": {\n" +
+            "    \"amount\": 100,\n" +
+            "    \"unit\": \"g\"\n" +
+            "  },\n" +
+            "  \"nutrition\": {\n" +
+            "    \"energy\": {\n" +
+            "      \"kj\": 0,\n" +
+            "      \"kcal\": 0\n" +
+            "    },\n" +
+            "    \"protein\": 0,\n" +
+            "    \"fat\": 0,\n" +
+            "    \"saturatedFat\": 0,\n" +
+            "    \"transFat\": 0,\n" +
+            "    \"carbohydrate\": 0,\n" +
+            "    \"sugar\": 0,\n" +
+            "    \"dietaryFiber\": 0,\n" +
+            "    \"sodium\": 0,\n" +
+            "    \"calcium\": 0\n" +
+            "  }\n" +
+            "}";
+
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(60, TimeUnit.SECONDS)
@@ -32,7 +61,7 @@ public class LlmService {
             .build();
 
     /**
-     * 解析 OCR 结果中的营养成分
+     * 解析 OCR 结果中的营养成分（不开启深度思考）
      *
      * @param ocrJson OCR 识别的 JSON 结果
      * @return 解析后的食物信息
@@ -40,12 +69,12 @@ public class LlmService {
     public OcrResultDTO.FoodInfo parseNutrition(JSONObject ocrJson) {
         try {
             // 构建提示词
-            String prompt = buildPrompt(ocrJson);
+            String prompt = buildNutritionPrompt(ocrJson);
 
-            log.info("调用大模型解析营养成分...");
+            log.info("调用大模型解析营养成分（不开启深度思考）...");
 
-            // 调用大模型 API
-            String response = callLlmApi(prompt);
+            // 调用大模型 API，不开启深度思考
+            String response = callLlmApi(prompt, false);
 
             if (response == null || response.isEmpty()) {
                 log.error("大模型返回空结果");
@@ -67,9 +96,44 @@ public class LlmService {
     }
 
     /**
-     * 构建提示词
+     * 解析食谱文本，计算总营养成分（开启深度思考）
+     *
+     * @param recipeText 食谱文本
+     * @return 解析后的食物信息（包含总营养）
      */
-    private String buildPrompt(JSONObject ocrJson) {
+    public OcrResultDTO.FoodInfo parseRecipe(String recipeText) {
+        try {
+            // 构建食谱解析提示词
+            String prompt = buildRecipePrompt(recipeText);
+
+            log.info("调用大模型解析食谱（开启深度思考）...");
+
+            // 调用大模型 API，开启深度思考
+            String response = callLlmApi(prompt, true);
+
+            if (response == null || response.isEmpty()) {
+                log.error("大模型返回空结果");
+                return new OcrResultDTO.FoodInfo();
+            }
+
+            log.debug("大模型原始返回: {}", response);
+
+            // 解析大模型返回的 JSON（复用同一个解析方法）
+            OcrResultDTO.FoodInfo foodInfo = parseFoodInfoFromResponse(response);
+
+            log.info("食谱解析成功: {}", foodInfo);
+            return foodInfo;
+
+        } catch (Exception e) {
+            log.error("大模型解析食谱失败", e);
+            return new OcrResultDTO.FoodInfo();
+        }
+    }
+
+    /**
+     * 构建营养成分表解析提示词
+     */
+    private String buildNutritionPrompt(JSONObject ocrJson) {
         StringBuilder prompt = new StringBuilder();
         prompt.append("分析这个营养成分表数据，给我返回一个JSON，除了JSON，什么都不要返回。\n\n");
         prompt.append("OCR识别的数据如下：\n");
@@ -79,32 +143,8 @@ public class LlmService {
 
         prompt.append("返回的JSON格式如下：\n");
         prompt.append("```json\n");
-        prompt.append("{\n");
-        prompt.append("  \"id\": \"\",\n");
-        prompt.append("  \"name\": \"\",\n");
-        prompt.append("  \"brand\": \"\",\n");
-        prompt.append("  \"category\": \"\",\n");
-        prompt.append("  \"servingSize\": {\n");
-        prompt.append("    \"amount\": 100,\n");
-        prompt.append("    \"unit\": \"g\"\n");
-        prompt.append("  },\n");
-        prompt.append("  \"nutrition\": {\n");
-        prompt.append("    \"energy\": {\n");
-        prompt.append("      \"kj\": 0,\n");
-        prompt.append("      \"kcal\": 0\n");
-        prompt.append("    },\n");
-        prompt.append("    \"protein\": 0,\n");
-        prompt.append("    \"fat\": 0,\n");
-        prompt.append("    \"saturatedFat\": 0,\n");
-        prompt.append("    \"transFat\": 0,\n");
-        prompt.append("    \"carbohydrate\": 0,\n");
-        prompt.append("    \"sugar\": 0,\n");
-        prompt.append("    \"dietaryFiber\": 0,\n");
-        prompt.append("    \"sodium\": 0,\n");
-        prompt.append("    \"calcium\": 0\n");
-        prompt.append("  }\n");
-        prompt.append("}\n");
-        prompt.append("```\n\n");
+        prompt.append(FOOD_INFO_JSON_TEMPLATE);
+        prompt.append("\n```\n\n");
 
         prompt.append("要求：\n");
         prompt.append("1. name 字段：根据营养成分猜测这是什么食品，如果无法确定就留空\n");
@@ -117,18 +157,86 @@ public class LlmService {
     }
 
     /**
-     * 调用大模型 API
+     * 构建食谱解析提示词
      */
-    private String callLlmApi(String prompt) throws IOException {
+    private String buildRecipePrompt(String recipeText) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("你是营养分析专家。严格按照以下步骤计算食谱的总营养成分。\n\n");
+        prompt.append("食谱内容：\n");
+        prompt.append(recipeText);
+        prompt.append("\n\n");
+
+        prompt.append("【第一步：列出每个食材及其重量，计算营养】\n");
+        prompt.append("使用公式：食材营养 = (食材重量g / 100) × 每100g营养参考值\n\n");
+
+        prompt.append("【食材营养参考表（每100g）】\n");
+        prompt.append("| 食材 | 热量kcal | 蛋白质g | 脂肪g | 碳水g | 钠mg |\n");
+        prompt.append("|------|----------|---------|-------|-------|------|\n");
+        prompt.append("| 鸡胸肉 | 120 | 23 | 2 | 0 | 0 |\n");
+        prompt.append("| 鸡腿肉 | 180 | 20 | 8 | 0 | 0 |\n");
+        prompt.append("| 牛瘦肉 | 150 | 22 | 5 | 0 | 0 |\n");
+        prompt.append("| 猪瘦肉 | 143 | 20 | 6 | 0 | 0 |\n");
+        prompt.append("| 木薯淀粉/淀粉 | 346 | 1 | 0 | 85 | 0 |\n");
+        prompt.append("| 玉米淀粉 | 346 | 1 | 0 | 85 | 0 |\n");
+        prompt.append("| 白糖/糖 | 400 | 0 | 0 | 100 | 0 |\n");
+        prompt.append("| 盐 | 0 | 0 | 0 | 0 | 38800 |\n");
+        prompt.append("| 味精 | 0 | 0 | 0 | 0 | 12000 |\n");
+        prompt.append("| 食用油 | 900 | 0 | 100 | 0 | 0 |\n");
+        prompt.append("| 鸡蛋/全蛋 | 144 | 13 | 11 | 1 | 0 |\n");
+        prompt.append("| 蛋清 | 18 | 11 | 0.2 | 0 | 0 |\n\n");
+
+        prompt.append("【第二步：汇总计算】\n");
+        prompt.append("总热量 = 所有食材热量相加\n");
+        prompt.append("总蛋白质 = 所有食材蛋白质相加\n");
+        prompt.append("总脂肪 = 所有食材脂肪相加\n");
+        prompt.append("总碳水 = 所有食材碳水相加\n");
+        prompt.append("总钠 = 所有食材钠相加\n\n");
+
+        prompt.append("【第三步：热量校验 - 必须通过】\n");
+        prompt.append("校验公式：热量(kcal) = 蛋白质 × 4 + 脂肪 × 9 + 碳水 × 4\n");
+        prompt.append("要求：校验热量与汇总热量的差距必须 ≤ 10%\n");
+        prompt.append("如果差距 > 10%，说明计算错误，必须重新计算！\n\n");
+
+        prompt.append("【返回JSON格式】\n");
+        prompt.append("```json\n");
+        prompt.append(FOOD_INFO_JSON_TEMPLATE);
+        prompt.append("\n```\n\n");
+
+        prompt.append("【输出要求】\n");
+        prompt.append("1. name：食谱名称\n");
+        prompt.append("2. servingSize.amount：成品重量（如果食谱给出就用给定的，否则用食材总重量）\n");
+        prompt.append("3. nutrition：填写第二步汇总的结果\n");
+        prompt.append("4. 只返回JSON，不要返回计算过程\n");
+        prompt.append("5. 确保JSON格式正确\n");
+
+        return prompt.toString();
+    }
+
+    /**
+     * 调用大模型 API
+     *
+     * @param prompt        提示词
+     * @param enableThinking 是否开启深度思考
+     */
+    private String callLlmApi(String prompt, boolean enableThinking) throws IOException {
         JSONObject requestBody = new JSONObject();
 
         // 设置模型
         requestBody.put("model", llmProperties.getModel());
 
-        // 关闭深度思考,直接返回结果
-        JSONObject thinkingConfig = new JSONObject();
-        thinkingConfig.put("type", "disabled");
-        requestBody.put("thinking", thinkingConfig);
+        // 根据场景决定是否开启深度思考
+        if (enableThinking) {
+            // AI识别场景：开启深度思考，提高食谱计算准确性
+            JSONObject thinkingConfig = new JSONObject();
+            thinkingConfig.put("type", "enabled");
+            requestBody.put("thinking", thinkingConfig);
+        }else{
+            // AI识别场景：开启深度思考，提高食谱计算准确性
+            JSONObject thinkingConfig = new JSONObject();
+            thinkingConfig.put("type", "disabled");
+            requestBody.put("thinking", thinkingConfig);
+        }
+        // 拍照添加场景：不开启深度思考，直接返回结果
 
         // 构建输入
         JSONArray inputArray = new JSONArray();

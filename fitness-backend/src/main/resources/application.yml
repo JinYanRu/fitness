@@ -23,8 +23,7 @@ spring:
 # OCR 服务配置
 ocr:
   service:
-    #rapid-url: http://111.228.49.250:8000
-    rapid-url: http://localhost:8000
+    rapid-url: http://111.228.49.250:10265
     timeout: 30000
 
 # 大模型服务配置
@@ -37,7 +36,7 @@ llm:
 
 # JWT 配置
 jwt:
-  secret: fitness-ocr-dev-secret-key-2024-please-use-a-longer-secret-key-for-production
+  secret: fitness-ocr-dev-secret-key-2024-please-use-a-longer-secret-key-for-production-env
   expiration: 604800
   header: Authorization
   token-prefix: "Bearer "

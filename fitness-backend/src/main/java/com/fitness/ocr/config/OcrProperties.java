@@ -15,7 +15,7 @@ public class OcrProperties {
     /**
      * RapidOCR 服务地址
      */
-    private String rapidUrl = "http://localhost:8000";
+    private String rapidUrl = "http://111.228.49.250:10265";
 
     /**
      * 请求超时时间（毫秒）

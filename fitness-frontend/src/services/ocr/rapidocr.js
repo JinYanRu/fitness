@@ -9,7 +9,7 @@ class RapidOCRStrategy extends BaseOCRStrategy {
     super(config)
     this.name = 'rapidocr'
     this.description = 'RapidOCR 本地服务'
-    this.baseUrl = config.baseUrl || 'http://localhost:8000'
+    this.baseUrl = config.baseUrl || 'http://111.228.49.250:10265'
     // 支持通过 Vite 代理访问，避免 CORS 问题
     this.proxyUrl = config.proxyUrl || '/ocr-proxy'
   }
