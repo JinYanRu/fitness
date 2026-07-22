@@ -3,15 +3,27 @@
  * 支持 Token 自动注入和 401 跳转
  */
 
+import { useRouter } from 'vue-router'
+
 // API 基础地址配置 - 使用 Vite 代理，指向 Spring Boot 后端
 const API_BASE_URL = '/api'
+
+// 全局 router 实例
+let routerInstance = null
+
+/**
+ * 设置 router 实例（在 main.js 中调用）
+ */
+export const setupRequestRouter = (router) => {
+  routerInstance = router
+}
 
 /**
  * 请求拦截器 - 自动添加 Token
  */
 const requestInterceptor = (config) => {
   // 从本地存储获取 token
-  const token = uni.getStorageSync('token')
+  const token = localStorage.getItem('token')
   if (token) {
     config.header = config.header || {}
     config.header.Authorization = `Bearer ${token}`
@@ -20,21 +32,42 @@ const requestInterceptor = (config) => {
 }
 
 /**
+ * 处理 401 未授权
+ */
+const handle401 = () => {
+  // 清除本地存储
+  localStorage.removeItem('token')
+  localStorage.removeItem('userInfo')
+
+  // 跳转到登录页
+  if (routerInstance) {
+    routerInstance.push('/auth/login')
+  } else {
+    // 如果 router 还没初始化，使用 window.location
+    window.location.href = '/#/auth/login'
+  }
+}
+
+/**
  * 响应拦截器
  */
 const responseInterceptor = (response) => {
+  // 检查 HTTP 状态码
   if (response.statusCode === 200) {
-    return response.data
+    const data = response.data
+
+    // 检查业务状态码
+    if (data && data.code === 401) {
+      handle401()
+      throw new Error('登录已过期，请重新登录')
+    }
+
+    return data
   }
 
-  // 处理 401 未授权
+  // 处理 HTTP 401 未授权
   if (response.statusCode === 401) {
-    // 清除本地存储的 token
-    uni.removeStorageSync('token')
-    uni.removeStorageSync('userInfo')
-
-    // 跳转到登录页
-    uni.navigateTo({ url: '/auth/login' })
+    handle401()
     throw new Error('登录已过期，请重新登录')
   }
 
@@ -66,19 +99,23 @@ const request = {
         ...options
       })
 
-      uni.request({
-        ...config,
-        success: (res) => {
-          try {
-            resolve(responseInterceptor(res))
-          } catch (error) {
-            reject(error)
-          }
-        },
-        fail: (err) => {
-          reject(new Error(err.errMsg || '网络请求失败'))
-        }
+      fetch(config.url, {
+        method: 'GET',
+        headers: config.header
       })
+        .then(res => res.json())
+        .then(data => {
+          // 检查业务状态码
+          if (data && data.code === 401) {
+            handle401()
+            reject(new Error('登录已过期，请重新登录'))
+            return
+          }
+          resolve(data)
+        })
+        .catch(err => {
+          reject(new Error(err.message || '网络请求失败'))
+        })
     })
   },
 
@@ -94,19 +131,24 @@ const request = {
         ...options
       })
 
-      uni.request({
-        ...config,
-        success: (res) => {
-          try {
-            resolve(responseInterceptor(res))
-          } catch (error) {
-            reject(error)
-          }
-        },
-        fail: (err) => {
-          reject(new Error(err.errMsg || '网络请求失败'))
-        }
+      fetch(config.url, {
+        method: 'POST',
+        headers: config.header,
+        body: JSON.stringify(config.data)
       })
+        .then(res => res.json())
+        .then(data => {
+          // 检查业务状态码
+          if (data && data.code === 401) {
+            handle401()
+            reject(new Error('登录已过期，请重新登录'))
+            return
+          }
+          resolve(data)
+        })
+        .catch(err => {
+          reject(new Error(err.message || '网络请求失败'))
+        })
     })
   },
 
@@ -122,19 +164,24 @@ const request = {
         ...options
       })
 
-      uni.request({
-        ...config,
-        success: (res) => {
-          try {
-            resolve(responseInterceptor(res))
-          } catch (error) {
-            reject(error)
-          }
-        },
-        fail: (err) => {
-          reject(new Error(err.errMsg || '网络请求失败'))
-        }
+      fetch(config.url, {
+        method: 'PUT',
+        headers: config.header,
+        body: JSON.stringify(config.data)
       })
+        .then(res => res.json())
+        .then(data => {
+          // 检查业务状态码
+          if (data && data.code === 401) {
+            handle401()
+            reject(new Error('登录已过期，请重新登录'))
+            return
+          }
+          resolve(data)
+        })
+        .catch(err => {
+          reject(new Error(err.message || '网络请求失败'))
+        })
     })
   },
 
@@ -149,19 +196,23 @@ const request = {
         ...options
       })
 
-      uni.request({
-        ...config,
-        success: (res) => {
-          try {
-            resolve(responseInterceptor(res))
-          } catch (error) {
-            reject(error)
-          }
-        },
-        fail: (err) => {
-          reject(new Error(err.errMsg || '网络请求失败'))
-        }
+      fetch(config.url, {
+        method: 'DELETE',
+        headers: config.header
       })
+        .then(res => res.json())
+        .then(data => {
+          // 检查业务状态码
+          if (data && data.code === 401) {
+            handle401()
+            reject(new Error('登录已过期，请重新登录'))
+            return
+          }
+          resolve(data)
+        })
+        .catch(err => {
+          reject(new Error(err.message || '网络请求失败'))
+        })
     })
   }
 }

@@ -74,25 +74,36 @@ public class OcrService {
 
             // 解析结果
             OcrResultDTO.OcrResultDTOBuilder builder = OcrResultDTO.builder()
-                    .success(result.getBooleanValue("success", true))
+                    .success(result.getInteger("code") == 200)
                     .elapseMs(System.currentTimeMillis() - startTime);
 
-            // 获取完整文本
-            String fullText = result.getString("full_text");
-            if (fullText == null && result.containsKey("text")) {
-                fullText = result.getString("text");
+            // 获取文本块 - RapidOCR 返回的是 data 字段
+            JSONArray dataArray = result.getJSONArray("data");
+            if (dataArray == null) {
+                // 兼容旧格式
+                dataArray = result.getJSONArray("texts");
             }
-            builder.text(fullText);
-            record.setFullText(fullText);
 
-            // 获取文本块
-            JSONArray textsArray = result.getJSONArray("texts");
-            if (textsArray != null) {
-                List<OcrResultDTO.TextBlock> textBlocks = parseTextBlocks(textsArray);
+            if (dataArray != null) {
+                List<OcrResultDTO.TextBlock> textBlocks = parseTextBlocks(dataArray);
                 builder.texts(textBlocks);
 
+                // 拼接完整文本
+                StringBuilder fullTextBuilder = new StringBuilder();
+                for (OcrResultDTO.TextBlock block : textBlocks) {
+                    if (block.getText() != null) {
+                        if (fullTextBuilder.length() > 0) {
+                            fullTextBuilder.append("\n");
+                        }
+                        fullTextBuilder.append(block.getText());
+                    }
+                }
+                String fullText = fullTextBuilder.toString();
+                builder.text(fullText);
+                record.setFullText(fullText);
+
                 // 使用大模型解析食物信息
-                if (textBlocks != null && !textBlocks.isEmpty()) {
+                if (!textBlocks.isEmpty()) {
                     OcrResultDTO.FoodInfo foodInfo = llmService.parseNutrition(result);
                     builder.foodInfo(foodInfo);
 
@@ -191,13 +202,10 @@ public class OcrService {
 
         log.info("调用 RapidOCR: url={}, base64Length={}", url, base64Data.length());
 
-        // 使用 JSON body 而不是 Form，避免大小限制
-        String jsonBody = "{\"image_base64\":\"" + base64Data + "\"}";
-
-        RequestBody body = RequestBody.create(
-                jsonBody,
-                MediaType.parse("application/json")
-        );
+        // RapidOCR API /ocr/base64 端点期望 application/x-www-form-urlencoded 格式
+        RequestBody body = new FormBody.Builder()
+                .add("image", base64Data)
+                .build();
 
         Request request = new Request.Builder()
                 .url(url)
@@ -243,8 +251,12 @@ public class OcrService {
                 block.setBox(box);
             }
 
-            // 解析 score
-            block.setScore(item.getDouble("score"));
+            // 解析 score/confidence
+            Double score = item.getDouble("confidence");
+            if (score == null) {
+                score = item.getDouble("score");
+            }
+            block.setScore(score);
 
             blocks.add(block);
         }

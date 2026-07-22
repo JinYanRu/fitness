@@ -29,6 +29,14 @@ onMounted(() => {
         <span class="tab-icon">📋</span>
         <span class="tab-text">历史</span>
       </div>
+      <div
+        class="tab-item"
+        :class="{ active: router.currentRoute.value.path === '/profile' }"
+        @click="router.push('/profile')"
+      >
+        <span class="tab-icon">👤</span>
+        <span class="tab-text">我的</span>
+      </div>
     </nav>
 
     <!-- 页面内容 -->

@@ -234,9 +234,13 @@ const loadData = async () => {
 
 // 加载用户信息
 const loadUserInfo = () => {
-  const saved = uni.getStorageSync('userInfo')
+  const saved = localStorage.getItem('userInfo')
   if (saved) {
-    userInfo.value = saved
+    try {
+      userInfo.value = JSON.parse(saved)
+    } catch (e) {
+      console.error('解析用户信息失败:', e)
+    }
   }
 }
 

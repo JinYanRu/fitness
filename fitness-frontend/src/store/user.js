@@ -18,14 +18,18 @@ export const useUserStore = defineStore('user', () => {
    * 初始化用户状态（从本地存储恢复）
    */
   const initUserState = () => {
-    const savedToken = uni.getStorageSync('token')
-    const savedUserInfo = uni.getStorageSync('userInfo')
+    const savedToken = localStorage.getItem('token')
+    const savedUserInfo = localStorage.getItem('userInfo')
 
     if (savedToken) {
       token.value = savedToken
     }
     if (savedUserInfo) {
-      userInfo.value = savedUserInfo
+      try {
+        userInfo.value = JSON.parse(savedUserInfo)
+      } catch (e) {
+        console.error('解析用户信息失败:', e)
+      }
     }
   }
 
@@ -34,7 +38,7 @@ export const useUserStore = defineStore('user', () => {
    */
   const setToken = (newToken) => {
     token.value = newToken
-    uni.setStorageSync('token', newToken)
+    localStorage.setItem('token', newToken)
   }
 
   /**
@@ -42,7 +46,7 @@ export const useUserStore = defineStore('user', () => {
    */
   const setUserInfo = (info) => {
     userInfo.value = info
-    uni.setStorageSync('userInfo', info)
+    localStorage.setItem('userInfo', JSON.stringify(info))
   }
 
   /**
@@ -82,8 +86,8 @@ export const useUserStore = defineStore('user', () => {
     token.value = null
     userInfo.value = null
     userProfile.value = null
-    uni.removeStorageSync('token')
-    uni.removeStorageSync('userInfo')
+    localStorage.removeItem('token')
+    localStorage.removeItem('userInfo')
   }
 
   /**

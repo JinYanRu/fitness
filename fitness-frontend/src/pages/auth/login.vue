@@ -66,8 +66,8 @@ const handleLogin = async () => {
 
     if (response.code === 200 && response.data) {
       // 保存 Token 和用户信息
-      uni.setStorageSync('token', response.data.token)
-      uni.setStorageSync('userInfo', response.data.user)
+      localStorage.setItem('token', response.data.token)
+      localStorage.setItem('userInfo', JSON.stringify(response.data.user))
 
       // 跳转到首页
       router.push('/')

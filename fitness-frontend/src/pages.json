@@ -47,6 +47,14 @@
         "navigationBarBackgroundColor": "#4CAF50",
         "navigationBarTextStyle": "white"
       }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#4CAF50",
+        "navigationBarTextStyle": "white"
+      }
     }
   ],
   "globalStyle": {

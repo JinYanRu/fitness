@@ -42,6 +42,12 @@ const routes = [
     name: 'History',
     component: () => import('./pages/history/history.vue'),
     meta: { title: '历史记录', requiresAuth: true }
+  },
+  {
+    path: '/profile',
+    name: 'Profile',
+    component: () => import('./pages/profile/profile.vue'),
+    meta: { title: '我的', requiresAuth: true }
   }
 ]
 
@@ -57,7 +63,7 @@ router.beforeEach((to, from, next) => {
 
   // 检查是否需要登录
   if (to.meta.requiresAuth) {
-    const token = uni.getStorageSync('token')
+    const token = localStorage.getItem('token')
     if (!token) {
       // 未登录，跳转到登录页
       next({
@@ -70,7 +76,7 @@ router.beforeEach((to, from, next) => {
 
   // 如果已登录，不允许访问登录/注册页
   if (to.meta.guest) {
-    const token = uni.getStorageSync('token')
+    const token = localStorage.getItem('token')
     if (token) {
       next('/')
       return
