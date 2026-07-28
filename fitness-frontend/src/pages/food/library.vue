@@ -114,7 +114,16 @@
         <div class="modal-body">
           <div class="form-item">
             <label>食物名称 *</label>
-            <input v-model="newFood.foodName" type="text" placeholder="请输入食物名称" />
+            <div class="input-with-button">
+              <input v-model="newFood.foodName" type="text" placeholder="请输入食物名称" />
+              <button
+                class="btn-ai-fill"
+                :disabled="!newFood.foodName.trim() || isAiFilling"
+                @click="handleAiFill"
+              >
+                {{ isAiFilling ? '填充中...' : '🤖 AI填充' }}
+              </button>
+            </div>
           </div>
 
           <div class="form-item">
@@ -404,6 +413,7 @@ const selectedCategory = ref('全部')
 
 // 手动添加
 const showAddModal = ref(false)
+const isAiFilling = ref(false)
 const newFood = ref({
   foodName: '',
   brand: '',
@@ -499,6 +509,38 @@ const handleSearch = async () => {
 const selectCategory = (cat) => {
   selectedCategory.value = cat
   handleSearch()
+}
+
+// AI 智能填充营养成分
+const handleAiFill = async () => {
+  if (!newFood.value.foodName.trim()) {
+    return
+  }
+
+  isAiFilling.value = true
+  try {
+    const response = await aiApi.fillNutrition(newFood.value.foodName.trim())
+    if (response.code === 200 && response.data) {
+      const foodInfo = response.data
+      // 填充营养成分
+      if (foodInfo.nutrition) {
+        newFood.value.calories = foodInfo.nutrition.energyKcal || null
+        newFood.value.protein = foodInfo.nutrition.protein || null
+        newFood.value.fat = foodInfo.nutrition.fat || null
+        newFood.value.carbohydrates = foodInfo.nutrition.carbohydrate || null
+      }
+      // 填充份量
+      if (foodInfo.servingSize) {
+        newFood.value.servingSize = foodInfo.servingSize
+      }
+    } else {
+      alert('AI 填充失败: ' + (response.message || '未知错误'))
+    }
+  } catch (error) {
+    alert('AI 填充失败: ' + error.message)
+  } finally {
+    isAiFilling.value = false
+  }
 }
 
 // 手动添加食物
@@ -1031,6 +1073,37 @@ onMounted(() => {
 .btn-confirm {
   background: #4CAF50;
   color: #fff;
+}
+
+/* AI 填充按钮样式 */
+.input-with-button {
+  display: flex;
+  gap: 8px;
+}
+
+.input-with-button input {
+  flex: 1;
+}
+
+.btn-ai-fill {
+  padding: 10px 12px;
+  background: #9C27B0;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.btn-ai-fill:hover:not(:disabled) {
+  background: #7B1FA2;
+}
+
+.btn-ai-fill:disabled {
+  background: #ccc;
+  cursor: not-allowed;
 }
 
 /* 步骤指示器 */

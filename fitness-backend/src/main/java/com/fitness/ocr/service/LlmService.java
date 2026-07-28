@@ -131,6 +131,41 @@ public class LlmService {
     }
 
     /**
+     * 根据食物名称填充营养成分（不开启深度思考）
+     *
+     * @param foodName 食物名称
+     * @return 解析后的食物信息
+     */
+    public OcrResultDTO.FoodInfo fillNutritionByFoodName(String foodName) {
+        try {
+            // 构建食物名称填充提示词
+            String prompt = buildFoodNamePrompt(foodName);
+
+            log.info("调用大模型根据食物名称填充营养成分...");
+
+            // 调用大模型 API，不开启深度思考
+            String response = callLlmApi(prompt, false);
+
+            if (response == null || response.isEmpty()) {
+                log.error("大模型返回空结果");
+                return new OcrResultDTO.FoodInfo();
+            }
+
+            log.debug("大模型原始返回: {}", response);
+
+            // 解析大模型返回的 JSON
+            OcrResultDTO.FoodInfo foodInfo = parseFoodInfoFromResponse(response);
+
+            log.info("食物名称填充成功: {}", foodInfo);
+            return foodInfo;
+
+        } catch (Exception e) {
+            log.error("大模型根据食物名称填充失败", e);
+            return new OcrResultDTO.FoodInfo();
+        }
+    }
+
+    /**
      * 构建营养成分表解析提示词
      */
     private String buildNutritionPrompt(JSONObject ocrJson) {
@@ -208,6 +243,37 @@ public class LlmService {
         prompt.append("3. nutrition：填写第二步汇总的结果\n");
         prompt.append("4. 只返回JSON，不要返回计算过程\n");
         prompt.append("5. 确保JSON格式正确\n");
+
+        return prompt.toString();
+    }
+
+    /**
+     * 构建食物名称填充营养成分提示词
+     */
+    private String buildFoodNamePrompt(String foodName) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("你是营养数据库专家。根据食物名称，提供该食物的营养成分参考值（每100g）。\n\n");
+        prompt.append("食物名称：");
+        prompt.append(foodName);
+        prompt.append("\n\n");
+
+        prompt.append("返回的JSON格式如下：\n");
+        prompt.append("```json\n");
+        prompt.append(FOOD_INFO_JSON_TEMPLATE);
+        prompt.append("\n```\n\n");
+
+        prompt.append("要求：\n");
+        prompt.append("1. name 字段：填写提供的食物名称\n");
+        prompt.append("2. category 字段：根据食物类型填写分类（如：谷物薯类、蔬菜类、水果类、肉类、蛋奶类、豆制品、坚果类、饮料类、其他）\n");
+        prompt.append("3. servingSize.amount：固定填 100\n");
+        prompt.append("4. servingSize.unit：根据食物类型填写合适单位（g 或 ml）\n");
+        prompt.append("5. nutrition 字段：填写该食物每100g的营养成分参考值\n");
+        prompt.append("   - 如果是常见食物，使用标准营养数据\n");
+        prompt.append("   - 如果是不常见食物，根据食材组成估算\n");
+        prompt.append("   - 热量(kcal) = 蛋白质×4 + 脂肪×9 + 碳水×4，确保数值合理\n");
+        prompt.append("6. 数值必须是合理的正数或0，不能为空\n");
+        prompt.append("7. 只返回JSON，不要有任何其他文字说明\n");
+        prompt.append("8. 确保返回的是有效的JSON格式\n");
 
         return prompt.toString();
     }

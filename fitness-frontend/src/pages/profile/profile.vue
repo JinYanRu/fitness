@@ -144,9 +144,44 @@
       </div>
     </div>
 
+    <!-- 营养素倍率 -->
+    <div class="section-card">
+      <div class="section-title">营养素倍率 <span class="auto-calc">(体重×倍率)</span></div>
+
+      <!-- 蛋白质倍率 -->
+      <div class="setting-row" @click="showProteinPicker = true">
+        <span class="setting-label">蛋白质</span>
+        <div class="setting-value">
+          <span v-if="profile?.proteinMultiplier">{{ profile.proteinMultiplier }} g/kg</span>
+          <span v-else class="placeholder">请选择</span>
+          <span class="arrow">›</span>
+        </div>
+      </div>
+
+      <!-- 脂肪倍率 -->
+      <div class="setting-row" @click="showFatPicker = true">
+        <span class="setting-label">脂肪</span>
+        <div class="setting-value">
+          <span v-if="profile?.fatMultiplier">{{ profile.fatMultiplier }} g/kg</span>
+          <span v-else class="placeholder">请选择</span>
+          <span class="arrow">›</span>
+        </div>
+      </div>
+
+      <!-- 碳水倍率 -->
+      <div class="setting-row" @click="showCarbsPicker = true">
+        <span class="setting-label">碳水</span>
+        <div class="setting-value">
+          <span v-if="profile?.carbsMultiplier">{{ profile.carbsMultiplier }} g/kg</span>
+          <span v-else class="placeholder">请选择</span>
+          <span class="arrow">›</span>
+        </div>
+      </div>
+    </div>
+
     <!-- 营养目标 -->
     <div class="section-card nutrition-target" v-if="profile?.targetCalories">
-      <div class="section-title">营养目标 <span class="auto-calc">(自动计算)</span></div>
+      <div class="section-title">营养目标参考</div>
       <div class="nutrition-summary">
         <div class="nutrition-item">
           <span class="nutrition-value">{{ profile.targetCalories }}</span>
@@ -276,6 +311,72 @@
       </div>
     </div>
 
+    <!-- 蛋白质倍率选择器 -->
+    <div class="picker-modal" v-if="showProteinPicker" @click.self="showProteinPicker = false">
+      <div class="picker-content">
+        <div class="picker-header">
+          <span @click="showProteinPicker = false">取消</span>
+          <span>蛋白质倍率</span>
+          <span @click="confirmProteinMultiplier">确定</span>
+        </div>
+        <div class="picker-body single-column">
+          <div class="picker-column scrollable">
+            <div
+              class="picker-item"
+              v-for="p in proteinRange"
+              :key="p"
+              :class="{ active: tempProteinMultiplier === p }"
+              @click="tempProteinMultiplier = p"
+            >{{ p.toFixed(1) }} g/kg</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 脂肪倍率选择器 -->
+    <div class="picker-modal" v-if="showFatPicker" @click.self="showFatPicker = false">
+      <div class="picker-content">
+        <div class="picker-header">
+          <span @click="showFatPicker = false">取消</span>
+          <span>脂肪倍率</span>
+          <span @click="confirmFatMultiplier">确定</span>
+        </div>
+        <div class="picker-body single-column">
+          <div class="picker-column scrollable">
+            <div
+              class="picker-item"
+              v-for="f in fatRange"
+              :key="f"
+              :class="{ active: tempFatMultiplier === f }"
+              @click="tempFatMultiplier = f"
+            >{{ f.toFixed(1) }} g/kg</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 碳水倍率选择器 -->
+    <div class="picker-modal" v-if="showCarbsPicker" @click.self="showCarbsPicker = false">
+      <div class="picker-content">
+        <div class="picker-header">
+          <span @click="showCarbsPicker = false">取消</span>
+          <span>碳水倍率</span>
+          <span @click="confirmCarbsMultiplier">确定</span>
+        </div>
+        <div class="picker-body single-column">
+          <div class="picker-column scrollable">
+            <div
+              class="picker-item"
+              v-for="c in carbsRange"
+              :key="c"
+              :class="{ active: tempCarbsMultiplier === c }"
+              @click="tempCarbsMultiplier = c"
+            >{{ c.toFixed(1) }} g/kg</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Loading -->
     <div class="loading-overlay" v-if="saving">
       <div class="loading-spinner"></div>
@@ -300,12 +401,18 @@ const showBirthdayPicker = ref(false)
 const showHeightPicker = ref(false)
 const showWeightPicker = ref(false)
 const showTargetWeightPicker = ref(false)
+const showProteinPicker = ref(false)
+const showFatPicker = ref(false)
+const showCarbsPicker = ref(false)
 
 // 选择器临时值
 const tempBirthday = ref({ year: 2000, month: 1, day: 1 })
 const tempHeight = ref(170)
 const tempWeight = ref(65)
 const tempTargetWeight = ref(60)
+const tempProteinMultiplier = ref(2.0)
+const tempFatMultiplier = ref(0.8)
+const tempCarbsMultiplier = ref(3.0)
 
 // 身高范围: 100-220cm
 const heightRange = computed(() => {
@@ -325,6 +432,33 @@ const weightRange = computed(() => {
 const years = computed(() => {
   const currentYear = new Date().getFullYear()
   return Array.from({ length: currentYear - 1940 + 1 }, (_, i) => 1940 + i)
+})
+
+// 蛋白质倍率范围: 0.5~4.0, 步长0.1
+const proteinRange = computed(() => {
+  const arr = []
+  for (let p = 0.5; p <= 4.0; p = Math.round((p + 0.1) * 10) / 10) {
+    arr.push(p)
+  }
+  return arr
+})
+
+// 脂肪倍率范围: 0.3~2.5, 步长0.1
+const fatRange = computed(() => {
+  const arr = []
+  for (let f = 0.3; f <= 2.5; f = Math.round((f + 0.1) * 10) / 10) {
+    arr.push(f)
+  }
+  return arr
+})
+
+// 碳水倍率范围: 0.5~6.0, 步长0.1
+const carbsRange = computed(() => {
+  const arr = []
+  for (let c = 0.5; c <= 6.0; c = Math.round((c + 0.1) * 10) / 10) {
+    arr.push(c)
+  }
+  return arr
 })
 
 // 格式化生日显示
@@ -365,6 +499,15 @@ const loadData = async () => {
       }
       if (res.data.targetWeight) {
         tempTargetWeight.value = Number(res.data.targetWeight)
+      }
+      if (res.data.proteinMultiplier) {
+        tempProteinMultiplier.value = Number(res.data.proteinMultiplier)
+      }
+      if (res.data.fatMultiplier) {
+        tempFatMultiplier.value = Number(res.data.fatMultiplier)
+      }
+      if (res.data.carbsMultiplier) {
+        tempCarbsMultiplier.value = Number(res.data.carbsMultiplier)
       }
     }
   } catch (error) {
@@ -451,6 +594,24 @@ const confirmWeight = async () => {
 const confirmTargetWeight = async () => {
   showTargetWeightPicker.value = false
   await saveProfile({ targetWeight: tempTargetWeight.value })
+}
+
+// 确认蛋白质倍率
+const confirmProteinMultiplier = async () => {
+  showProteinPicker.value = false
+  await saveProfile({ proteinMultiplier: tempProteinMultiplier.value })
+}
+
+// 确认脂肪倍率
+const confirmFatMultiplier = async () => {
+  showFatPicker.value = false
+  await saveProfile({ fatMultiplier: tempFatMultiplier.value })
+}
+
+// 确认碳水倍率
+const confirmCarbsMultiplier = async () => {
+  showCarbsPicker.value = false
+  await saveProfile({ carbsMultiplier: tempCarbsMultiplier.value })
 }
 
 // 退出登录

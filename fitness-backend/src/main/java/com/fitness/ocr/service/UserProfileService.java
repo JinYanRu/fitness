@@ -99,6 +99,15 @@ public class UserProfileService {
         if (request.getActivityLevel() != null) {
             profile.setActivityLevel(request.getActivityLevel());
         }
+        if (request.getProteinMultiplier() != null) {
+            profile.setProteinMultiplier(request.getProteinMultiplier());
+        }
+        if (request.getFatMultiplier() != null) {
+            profile.setFatMultiplier(request.getFatMultiplier());
+        }
+        if (request.getCarbsMultiplier() != null) {
+            profile.setCarbsMultiplier(request.getCarbsMultiplier());
+        }
 
         // 计算营养目标
         calculateNutritionTargets(profile);
@@ -112,6 +121,8 @@ public class UserProfileService {
     /**
      * 计算营养目标
      * 使用 Mifflin-St Jeor 公式计算 BMR 和 TDEE
+     * 如果用户设置了营养素倍率，则按体重倍率计算三大营养素，再反推目标热量
+     * 否则按原有比例自动计算
      */
     private void calculateNutritionTargets(UserProfile profile) {
         // 只有在有足够数据时才计算
@@ -147,7 +158,34 @@ public class UserProfileService {
         BigDecimal tdee = bmr.multiply(activityMultiplier).setScale(0, RoundingMode.HALF_UP);
         profile.setTdee(tdee);
 
-        // 根据目标计算目标热量
+        // 如果用户设置了营养素倍率，按体重倍率计算
+        if (profile.getProteinMultiplier() != null
+                && profile.getFatMultiplier() != null
+                && profile.getCarbsMultiplier() != null) {
+            // 蛋白质 = 体重 × 蛋白质倍率
+            BigDecimal targetProtein = weight.multiply(profile.getProteinMultiplier())
+                    .setScale(1, RoundingMode.HALF_UP);
+            profile.setTargetProtein(targetProtein);
+
+            // 脂肪 = 体重 × 脂肪倍率
+            BigDecimal targetFat = weight.multiply(profile.getFatMultiplier())
+                    .setScale(1, RoundingMode.HALF_UP);
+            profile.setTargetFat(targetFat);
+
+            // 碳水 = 体重 × 碳水倍率
+            BigDecimal targetCarbs = weight.multiply(profile.getCarbsMultiplier())
+                    .setScale(1, RoundingMode.HALF_UP);
+            profile.setTargetCarbs(targetCarbs);
+
+            // 目标热量 = 蛋白质×4 + 脂肪×9 + 碳水×4
+            BigDecimal targetCalories = targetProtein.multiply(new BigDecimal("4"))
+                    .add(targetFat.multiply(new BigDecimal("9")))
+                    .add(targetCarbs.multiply(new BigDecimal("4")));
+            profile.setTargetCalories(targetCalories.setScale(0, RoundingMode.HALF_UP).intValue());
+            return;
+        }
+
+        // 未设置倍率时，按原有比例自动计算
         BigDecimal targetCalories;
         String goal = profile.getGoal() != null ? profile.getGoal() : "maintain";
         switch (goal) {
@@ -238,6 +276,9 @@ public class UserProfileService {
                 .targetProtein(profile.getTargetProtein())
                 .targetFat(profile.getTargetFat())
                 .targetCarbs(profile.getTargetCarbs())
+                .proteinMultiplier(profile.getProteinMultiplier())
+                .fatMultiplier(profile.getFatMultiplier())
+                .carbsMultiplier(profile.getCarbsMultiplier())
                 .createdAt(profile.getCreateTime())
                 .updatedAt(profile.getUpdateTime())
                 .build();

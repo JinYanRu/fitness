@@ -13,6 +13,9 @@ REMOTE_PORT="10260"
 REMOTE_USER="raza"
 REMOTE_DIR="/home/raza/server/fitness"
 
+# 将密码导出为环境变量，避免特殊字符在命令行参数中被 shell 错误解析
+export SSHPASS='JinYanru(()!)('
+
 echo "=========================================="
 echo "  远程服务器初始化"
 echo "  服务器: ${REMOTE_USER}@${REMOTE_HOST}"
@@ -25,8 +28,8 @@ if ! command -v sshpass &> /dev/null; then
     SSH_CMD="ssh -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST}"
     SCP_CMD="scp -P ${REMOTE_PORT}"
 else
-    SSH_CMD="sshpass -p 'JinYanru(()!)(' ssh -o StrictHostKeyChecking=no -p 10260 ${REMOTE_USER}@${REMOTE_HOST}"
-    SCP_CMD="sshpass -p 'JinYanru(()!)(' scp -o StrictHostKeyChecking=no -P 10260"
+    SSH_CMD="sshpass -e ssh -o StrictHostKeyChecking=no -p 10260 ${REMOTE_USER}@${REMOTE_HOST}"
+    SCP_CMD="sshpass -e scp -o StrictHostKeyChecking=no -P 10260"
 fi
 
 echo ""

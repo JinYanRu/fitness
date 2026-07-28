@@ -129,4 +129,42 @@ public class AiController {
          */
         private String supplement;
     }
+
+    /**
+     * AI 根据食物名称填充营养成分
+     * 根据输入的食物名称，返回该食物的营养成分参考值
+     *
+     * @param request 食物名称请求
+     * @return 食物的营养成分信息
+     */
+    @PostMapping("/fill-nutrition")
+    public Result<OcrResultDTO.FoodInfo> fillNutrition(@Valid @RequestBody FoodNameRequest request) {
+        log.info("收到 AI 营养填充请求: {}", request.getFoodName());
+
+        try {
+            OcrResultDTO.FoodInfo foodInfo = llmService.fillNutritionByFoodName(request.getFoodName());
+
+            if (foodInfo.getFoodName() != null && foodInfo.getNutrition() != null) {
+                return Result.success(foodInfo);
+            } else {
+                return Result.error("AI 填充失败，请检查输入内容");
+            }
+
+        } catch (Exception e) {
+            log.error("AI 营养填充异常", e);
+            return Result.error("AI 填充失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 食物名称请求
+     */
+    @lombok.Data
+    public static class FoodNameRequest {
+        /**
+         * 食物名称
+         */
+        @jakarta.validation.constraints.NotBlank(message = "食物名称不能为空")
+        private String foodName;
+    }
 }

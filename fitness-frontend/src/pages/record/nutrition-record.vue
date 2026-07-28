@@ -21,8 +21,8 @@
       </div>
     </div>
 
-    <!-- 搜索食物 -->
-    <div class="search-section">
+    <!-- 搜索食物（仅新增模式显示） -->
+    <div v-if="!editId" class="search-section">
       <input
         v-model="searchKeyword"
         type="text"
@@ -32,8 +32,8 @@
       />
     </div>
 
-    <!-- 食物来源切换 -->
-    <div class="source-tabs">
+    <!-- 食物来源切换（仅新增模式显示） -->
+    <div v-if="!editId" class="source-tabs">
       <div
         :class="['source-tab', foodSource === 'my' ? 'active' : '']"
         @click="foodSource = 'my'"
@@ -48,8 +48,8 @@
       </div>
     </div>
 
-    <!-- 食物列表 -->
-    <div class="food-list">
+    <!-- 食物列表（仅新增模式显示） -->
+    <div v-if="!editId" class="food-list">
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="filteredFoods.length === 0" class="empty">
         <p>暂无食物</p>
@@ -261,10 +261,51 @@ watch(foodSource, () => {
   searchKeyword.value = ''
 })
 
+// 加载编辑数据
+const loadEditData = async (id) => {
+  try {
+    const res = await nutritionApi.getById(id)
+    const record = res.data
+    if (!record) return
+
+    // 填充用餐类型和日期
+    formData.value.mealType = record.mealType || 'lunch'
+    formData.value.recordDate = record.recordDate || new Date().toISOString().split('T')[0]
+
+    // 填充食用量
+    servingAmount.value = record.servingAmount || 100
+
+    // 将记录中的营养值反算为"每 servingSize 单位"的基准值
+    // 这样用户修改食用量时，计算属性能正确重新计算
+    const amount = record.servingAmount || 100
+    const baseRatio = 100 / amount // 反算到每 100g 的比例
+
+    // 构造 selectedFood 对象，用于显示已选食物和计算营养
+    selectedFood.value = {
+      id: record.foodId || record.id,
+      foodName: record.foodName,
+      brand: record.brand,
+      servingSize: 100, // 统一以 100g 为基准
+      servingUnit: record.servingUnit || 'g',
+      calories: Math.round((record.calories || 0) * baseRatio),
+      protein: Math.round((record.protein || 0) * baseRatio * 10) / 10,
+      fat: Math.round((record.fat || 0) * baseRatio * 10) / 10,
+      carbohydrates: Math.round((record.carbohydrates || 0) * baseRatio * 10) / 10,
+      fiber: record.fiber != null ? Math.round(record.fiber * baseRatio * 10) / 10 : null,
+      sodium: record.sodium != null ? Math.round(record.sodium * baseRatio) : null,
+      sugar: record.sugar != null ? Math.round(record.sugar * baseRatio * 10) / 10 : null
+    }
+  } catch (error) {
+    console.error('加载编辑数据失败:', error)
+    alert('加载记录数据失败，请重试')
+  }
+}
+
 onMounted(() => {
   if (route.params.id) {
     editId.value = route.params.id
-    // TODO: 加载编辑数据
+    // 加载编辑数据
+    loadEditData(route.params.id)
   }
 
   // 如果从食物库跳转过来，预选食物
@@ -278,7 +319,8 @@ onMounted(() => {
         foodSource.value = route.query.foodType === 'common' ? 'common' : 'my'
       }
     })
-  } else {
+  } else if (!route.params.id) {
+    // 新增模式才加载食物列表，编辑模式不需要（已有选中食物）
     loadFoods()
   }
 })
@@ -289,7 +331,7 @@ onMounted(() => {
   padding: 16px;
   background: #f5f5f5;
   min-height: 100vh;
-  padding-bottom: 100px;
+  padding-bottom: 16px;
 }
 
 .page-header {
@@ -510,10 +552,7 @@ onMounted(() => {
 
 /* 保存按钮 */
 .save-section {
-  position: fixed;
-  bottom: 16px;
-  left: 16px;
-  right: 16px;
+  margin-top: 24px;
 }
 
 .btn-save {

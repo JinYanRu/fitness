@@ -56,6 +56,12 @@ public class UserProfileDTO {
 
     private BigDecimal targetCarbs;
 
+    private BigDecimal proteinMultiplier;
+
+    private BigDecimal fatMultiplier;
+
+    private BigDecimal carbsMultiplier;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

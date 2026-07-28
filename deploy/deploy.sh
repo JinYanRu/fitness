@@ -17,9 +17,12 @@ set -e
 REMOTE_HOST="111.228.49.250"
 REMOTE_PORT="10260"
 REMOTE_USER="raza"
-REMOTE_PASS="JinYanru(()!)("
+REMOTE_PASS='JinYanru(()!)('
 REMOTE_DIR="/home/raza/server/fitness"
 JAR_NAME="fitness-ocr-1.0.0.jar"
+
+# 将密码导出为环境变量，避免特殊字符在命令行参数中被 shell 错误解析
+export SSHPASS="${REMOTE_PASS}"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -84,7 +87,7 @@ check_local_env() {
 # 检查远程服务器连接
 check_remote() {
     log_step "检查远程服务器连接"
-    if sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "echo '连接成功'" &> /dev/null; then
+    if sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "echo '连接成功'" &> /dev/null; then
         log_info "服务器 ${REMOTE_HOST} 连接正常"
     else
         log_error "无法连接服务器 ${REMOTE_HOST}"
@@ -141,7 +144,7 @@ build_backend() {
 # 备份远程文件
 backup_remote() {
     log_step "备份远程文件"
-    sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
+    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
         cd ${REMOTE_DIR}
         # 备份后端 jar
         if [ -f backend/${JAR_NAME} ]; then
@@ -166,25 +169,25 @@ backup_remote() {
 upload_frontend() {
     log_step "上传前端文件"
     # 确保目录存在
-    sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "mkdir -p ${REMOTE_DIR}/dist"
+    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "mkdir -p ${REMOTE_DIR}/dist"
     # 清空远程 dist
-    sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "rm -rf ${REMOTE_DIR}/dist/* || true"
+    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "rm -rf ${REMOTE_DIR}/dist/* || true"
     # 上传整个目录
-    sshpass -p "${REMOTE_PASS}" scp -o StrictHostKeyChecking=no -P ${REMOTE_PORT} -r "$PROJECT_DIR/fitness-frontend/dist" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
+    sshpass -e scp -o StrictHostKeyChecking=no -P ${REMOTE_PORT} -r "$PROJECT_DIR/fitness-frontend/dist" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
     log_info "前端文件上传完成 ✓"
 }
 
 # 上传后端
 upload_backend() {
     log_step "上传后端 jar"
-    sshpass -p "${REMOTE_PASS}" scp -o StrictHostKeyChecking=no -P ${REMOTE_PORT} "$PROJECT_DIR/fitness-backend/target/${JAR_NAME}" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/backend/${JAR_NAME}"
+    sshpass -e scp -o StrictHostKeyChecking=no -P ${REMOTE_PORT} "$PROJECT_DIR/fitness-backend/target/${JAR_NAME}" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/backend/${JAR_NAME}"
     log_info "后端 jar 上传完成 ✓"
 }
 
 # 重启后端服务
 restart_backend() {
     log_step "重启后端服务"
-    sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
+    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
         # 停止旧进程
         PID=\$(lsof -ti:8080 2>/dev/null || true)
         if [ -n \"\$PID\" ]; then
@@ -231,7 +234,7 @@ restart_backend() {
 # 重载 nginx
 reload_nginx() {
     log_step "重载 nginx"
-    sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
+    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
         nginx -t 2>&1 && (systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null)
         echo '✓ nginx 重载完成'
     "
@@ -241,7 +244,7 @@ reload_nginx() {
 # 回滚
 rollback() {
     log_step "回滚到上一版本"
-    sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
+    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
         cd ${REMOTE_DIR}
 
         # 查找最新备份
@@ -279,7 +282,7 @@ rollback() {
 # 显示部署状态
 show_status() {
     log_step "部署状态"
-    sshpass -p "${REMOTE_PASS}" ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
+    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
         echo '--- 后端服务 ---'
         PID=\$(lsof -ti:8080 2>/dev/null || echo '未运行')
         echo \"PID: \$PID\"

@@ -105,6 +105,24 @@ public class UserProfile {
     private BigDecimal targetCarbs;
 
     /**
+     * 蛋白质倍率 (g/kg体重)
+     */
+    @Column(name = "protein_multiplier", precision = 4, scale = 1)
+    private BigDecimal proteinMultiplier;
+
+    /**
+     * 脂肪倍率 (g/kg体重)
+     */
+    @Column(name = "fat_multiplier", precision = 4, scale = 1)
+    private BigDecimal fatMultiplier;
+
+    /**
+     * 碳水倍率 (g/kg体重)
+     */
+    @Column(name = "carbs_multiplier", precision = 4, scale = 1)
+    private BigDecimal carbsMultiplier;
+
+    /**
      * 创建时间
      */
     @Column(name = "create_time")

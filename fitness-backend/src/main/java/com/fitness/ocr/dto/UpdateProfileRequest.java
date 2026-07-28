@@ -61,4 +61,19 @@ public class UpdateProfileRequest {
      * 活动水平：sedentary/light/moderate/high
      */
     private String activityLevel;
+
+    /**
+     * 蛋白质倍率 (g/kg体重)
+     */
+    private BigDecimal proteinMultiplier;
+
+    /**
+     * 脂肪倍率 (g/kg体重)
+     */
+    private BigDecimal fatMultiplier;
+
+    /**
+     * 碳水倍率 (g/kg体重)
+     */
+    private BigDecimal carbsMultiplier;
 }

@@ -21,6 +21,15 @@ export const aiApi = {
    */
   parseRecipeImage(imageBase64, supplement = '') {
     return request.post('/ai/parse-recipe-image', { imageBase64, supplement })
+  },
+
+  /**
+   * 根据食物名称填充营养成分
+   * @param {string} foodName - 食物名称
+   * @returns {Promise} 营养成分信息
+   */
+  fillNutrition(foodName) {
+    return request.post('/ai/fill-nutrition', { foodName })
   }
 }
 
