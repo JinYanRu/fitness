@@ -158,33 +158,6 @@ CREATE TABLE IF NOT EXISTS food_unit (
     UNIQUE KEY uk_food_unit (food_id, food_type, unit_name)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='食物计量单位表';
 
--- 公共食物库
-CREATE TABLE IF NOT EXISTS common_food (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
-    food_name VARCHAR(128) NOT NULL COMMENT '食物名称',
-    category VARCHAR(32) COMMENT '食物分类',
-    brand VARCHAR(64) COMMENT '品牌',
-    serving_size DECIMAL(10,2) COMMENT '份量',
-    serving_unit VARCHAR(16) COMMENT '份量单位',
-    calories DECIMAL(10,2) COMMENT '能量(kcal)',
-    protein DECIMAL(10,2) COMMENT '蛋白质(g)',
-    fat DECIMAL(10,2) COMMENT '脂肪(g)',
-    saturated_fat DECIMAL(10,2) COMMENT '饱和脂肪(g)',
-    carbohydrates DECIMAL(10,2) COMMENT '碳水化合物(g)',
-    fiber DECIMAL(10,2) COMMENT '膳食纤维(g)',
-    sodium DECIMAL(10,2) COMMENT '钠(mg)',
-    sugar DECIMAL(10,2) COMMENT '糖(g)',
-    calcium DECIMAL(10,2) COMMENT '钙(mg)',
-    source VARCHAR(32) DEFAULT 'official' COMMENT '数据来源: official/user_upload/crawled',
-    verified TINYINT DEFAULT 0 COMMENT '是否已验证: 0-否, 1-是',
-    is_active TINYINT DEFAULT 1 COMMENT '是否启用: 0-否, 1-是',
-    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    INDEX idx_food_name (food_name),
-    INDEX idx_category (category),
-    INDEX idx_brand (brand)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='公共食物库';
-
 -- 用户菜谱表
 CREATE TABLE IF NOT EXISTS user_recipe (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',

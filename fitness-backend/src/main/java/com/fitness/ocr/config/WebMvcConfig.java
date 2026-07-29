@@ -22,8 +22,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .excludePathPatterns(
                         "/api/auth/login",       // 登录接口
                         "/api/auth/register",    // 注册接口
-                        "/api/ocr/**",           // OCR 相关接口（暂时开放）
-                        "/api/food/common/**"    // 公共食物库（暂时开放）
+                        "/api/ocr/**"            // OCR 相关接口（暂时开放）
                 );
     }
 }

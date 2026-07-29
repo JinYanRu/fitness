@@ -23,7 +23,7 @@ fitness/
 ### Backend (fitness-backend)
 
 Standard Spring Boot layered architecture under `com.fitness.ocr`:
-- **controller/** — REST endpoints (OcrController, AiController, AuthController, NutritionController, UserFoodController, CommonFoodController, UserRecipeController)
+- **controller/** — REST endpoints (OcrController, AiController, AuthController, NutritionController, UserFoodController, UserRecipeController)
 - **service/** — Business logic (OcrService calls RapidOCR, LlmService calls Doubao/豆包 LLM, AuthService handles JWT auth)
 - **repository/** — Spring Data JPA interfaces
 - **entity/** — JPA entities mapped to MySQL tables
@@ -32,7 +32,7 @@ Standard Spring Boot layered architecture under `com.fitness.ocr`:
 - **security/** — JwtAuthenticationInterceptor + JwtUtils; JWT token in `Authorization: Bearer <token>` header
 - **exception/** — GlobalExceptionHandler
 
-**JWT auth**: Interceptor covers `/api/**`, excludes `/api/auth/login`, `/api/auth/register`, `/api/ocr/**`, `/api/food/common/**`. Authenticated user ID/username stored as request attributes (`userId`, `username`).
+**JWT auth**: Interceptor covers `/api/**`, excludes `/api/auth/login`, `/api/auth/register`, `/api/ocr/**`. Authenticated user ID/username stored as request attributes (`userId`, `username`).
 
 **External services**:
 - RapidOCR (image OCR) — configured via `ocr.service.rapid-url`
@@ -52,7 +52,7 @@ Vue 3 SPA with hash-based routing:
 
 ### Database
 
-MySQL 8.0, database `fitness_ocr`. Init script at `fitness-backend/src/main/resources/db/init.sql`. JPA `ddl-auto: update` so Hibernate syncs entities on startup. Key tables: `user`, `user_profile`, `ocr_record`, `food_nutrition`, `nutrition_record`, `user_food`, `common_food`, `user_recipe`, `recipe_ingredient`.
+MySQL 8.0, database `fitness_ocr`. Init script at `fitness-backend/src/main/resources/db/init.sql`. JPA `ddl-auto: update` so Hibernate syncs entities on startup. Key tables: `user`, `user_profile`, `ocr_record`, `food_nutrition`, `nutrition_record`, `user_food`, `user_recipe`, `recipe_ingredient`.
 
 ## Build & Run Commands
 

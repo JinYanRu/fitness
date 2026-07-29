@@ -35,25 +35,6 @@ export const userFoodApi = {
   }
 }
 
-// 公共食物库 API
-export const commonFoodApi = {
-  getList() {
-    return request.get('/food/common')
-  },
-
-  search(keyword, category) {
-    return request.get('/food/common/search', { keyword, category })
-  },
-
-  getById(id) {
-    return request.get(`/food/common/${id}`)
-  },
-
-  getCategories() {
-    return request.get('/food/common/categories')
-  }
-}
-
 // 菜谱 API
 export const recipeApi = {
   getList() {
@@ -83,6 +64,5 @@ export const recipeApi = {
 
 export default {
   userFoodApi,
-  commonFoodApi,
   recipeApi
 }

@@ -1,21 +1,5 @@
 <template>
   <div class="food-library-page">
-    <!-- 标签切换 -->
-    <div class="tabs">
-      <div
-        :class="['tab', activeTab === 'my' ? 'active' : '']"
-        @click="activeTab = 'my'"
-      >
-        我的食物库
-      </div>
-      <div
-        :class="['tab', activeTab === 'common' ? 'active' : '']"
-        @click="activeTab = 'common'"
-      >
-        公共食物库
-      </div>
-    </div>
-
     <!-- 搜索栏 -->
     <div class="search-bar">
       <input
@@ -28,7 +12,7 @@
     </div>
 
     <!-- 我的食物库 -->
-    <div v-if="activeTab === 'my'" class="food-list">
+    <div class="food-list">
       <div class="list-header">
         <span class="count">共 {{ myFoods.length }} 种食物</span>
         <div class="action-buttons">
@@ -63,42 +47,6 @@
             <span>蛋白质: {{ food.protein || 0 }}g</span>
           </div>
           <div v-if="food.source === 'ocr'" class="food-source">📷 OCR识别</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- 公共食物库 -->
-    <div v-if="activeTab === 'common'" class="food-list">
-      <div class="categories">
-        <span
-          v-for="cat in categories"
-          :key="cat"
-          :class="['category', selectedCategory === cat ? 'active' : '']"
-          @click="selectCategory(cat)"
-        >
-          {{ cat }}
-        </span>
-      </div>
-
-      <div v-if="loading" class="loading">加载中...</div>
-
-      <div v-else-if="commonFoods.length === 0" class="empty">
-        <p>暂无数据</p>
-      </div>
-
-      <div v-else class="food-items">
-        <div
-          v-for="food in commonFoods"
-          :key="food.id"
-          class="food-card"
-          @click="selectCommonFood(food)"
-        >
-          <div class="food-name">{{ food.foodName }}</div>
-          <div v-if="food.brand" class="food-brand">{{ food.brand }}</div>
-          <div class="food-nutrition">
-            <span>热量: {{ food.calories || 0 }} kcal</span>
-            <span>蛋白质: {{ food.protein || 0 }}g</span>
-          </div>
         </div>
       </div>
     </div>
@@ -392,9 +340,9 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { userFoodApi, commonFoodApi } from '@/services/api/food.js'
+import { userFoodApi } from '@/services/api/food.js'
 import { aiApi } from '@/services/api/ai.js'
 import ImagePicker from '@/components/ImagePicker.vue'
 import NutritionForm from '@/components/NutritionForm.vue'
@@ -402,14 +350,10 @@ import ocrManager from '@/services/ocr/init.js'
 
 const router = useRouter()
 
-const activeTab = ref('my')
 const searchKeyword = ref('')
 const loading = ref(false)
 
 const myFoods = ref([])
-const commonFoods = ref([])
-const categories = ref(['全部', '谷物薯类', '蔬菜类', '水果类', '肉类', '蛋奶类', '豆制品', '坚果类', '饮料类'])
-const selectedCategory = ref('全部')
 
 // 手动添加
 const showAddModal = ref(false)
@@ -465,50 +409,22 @@ const loadMyFoods = async () => {
   }
 }
 
-// 加载公共食物库
-const loadCommonFoods = async () => {
-  loading.value = true
-  try {
-    const response = await commonFoodApi.getList()
-    commonFoods.value = response.data || []
-  } catch (error) {
-    console.error('加载失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
 // 搜索
 const handleSearch = async () => {
   if (!searchKeyword.value.trim()) {
-    if (activeTab.value === 'my') {
-      loadMyFoods()
-    } else {
-      loadCommonFoods()
-    }
+    loadMyFoods()
     return
   }
 
   loading.value = true
   try {
-    if (activeTab.value === 'my') {
-      const response = await userFoodApi.search(searchKeyword.value)
-      myFoods.value = response.data || []
-    } else {
-      const response = await commonFoodApi.search(searchKeyword.value, selectedCategory.value)
-      commonFoods.value = response.data || []
-    }
+    const response = await userFoodApi.search(searchKeyword.value)
+    myFoods.value = response.data || []
   } catch (error) {
     console.error('搜索失败:', error)
   } finally {
     loading.value = false
   }
-}
-
-// 选择分类
-const selectCategory = (cat) => {
-  selectedCategory.value = cat
-  handleSearch()
 }
 
 // AI 智能填充营养成分
@@ -576,39 +492,6 @@ const selectFood = (food) => {
   router.push({
     path: `/food/edit/${food.id}`
   })
-}
-
-// 选择公共食物（弹出操作菜单）
-const selectCommonFood = (food) => {
-  // 公共食物库的食物可以选择：添加到饮食记录 或 复制到我的食物库
-  if (confirm(`是否将「${food.foodName}」复制到我的食物库？`)) {
-    copyToMyFoods(food)
-  }
-}
-
-// 复制公共食物到我的食物库
-const copyToMyFoods = async (food) => {
-  try {
-    await userFoodApi.create({
-      foodName: food.foodName,
-      brand: food.brand,
-      servingSize: food.servingSize,
-      servingUnit: food.servingUnit,
-      calories: food.calories,
-      protein: food.protein,
-      fat: food.fat,
-      carbohydrates: food.carbohydrates,
-      fiber: food.fiber,
-      sodium: food.sodium,
-      sugar: food.sugar
-    })
-    alert('已复制到我的食物库！')
-    // 切换到我的食物库标签
-    activeTab.value = 'my'
-    loadMyFoods()
-  } catch (error) {
-    alert('复制失败: ' + error.message)
-  }
 }
 
 // OCR 相关方法
@@ -793,16 +676,6 @@ const closeAiModal = () => {
   aiFormData.value = {}
 }
 
-// 监听标签切换
-watch(activeTab, (tab) => {
-  searchKeyword.value = ''
-  if (tab === 'my') {
-    loadMyFoods()
-  } else {
-    loadCommonFoods()
-  }
-})
-
 onMounted(() => {
   loadMyFoods()
 })
@@ -812,26 +685,6 @@ onMounted(() => {
 .food-library-page {
   min-height: 100vh;
   background: #f5f5f5;
-}
-
-.tabs {
-  display: flex;
-  background: #fff;
-  padding: 0 16px;
-  border-bottom: 1px solid #eee;
-}
-
-.tab {
-  flex: 1;
-  padding: 12px;
-  text-align: center;
-  color: #666;
-  border-bottom: 2px solid transparent;
-}
-
-.tab.active {
-  color: #4CAF50;
-  border-bottom-color: #4CAF50;
 }
 
 .search-bar {
@@ -889,28 +742,6 @@ onMounted(() => {
   border-radius: 16px;
   font-size: 14px;
   cursor: pointer;
-}
-
-.categories {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px 16px;
-  background: #fff;
-}
-
-.category {
-  padding: 6px 12px;
-  background: #f0f0f0;
-  border-radius: 12px;
-  font-size: 13px;
-  color: #666;
-  cursor: pointer;
-}
-
-.category.active {
-  background: #4CAF50;
-  color: #fff;
 }
 
 .loading, .empty {

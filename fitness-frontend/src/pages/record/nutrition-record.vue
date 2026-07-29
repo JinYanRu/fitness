@@ -48,28 +48,12 @@
       />
     </div>
 
-    <!-- 食物来源切换（仅新增模式显示） -->
-    <div v-if="!editId" class="source-tabs">
-      <div
-        :class="['source-tab', foodSource === 'my' ? 'active' : '']"
-        @click="foodSource = 'my'"
-      >
-        我的食物库 ({{ myFoods.length }})
-      </div>
-      <div
-        :class="['source-tab', foodSource === 'common' ? 'active' : '']"
-        @click="foodSource = 'common'"
-      >
-        公共食物库 ({{ commonFoods.length }})
-      </div>
-    </div>
-
     <!-- 食物列表（仅新增模式显示） -->
     <div v-if="!editId" class="food-list">
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="filteredFoods.length === 0" class="empty">
         <p>暂无食物</p>
-        <p class="empty-tip" v-if="foodSource === 'my'">去食物库添加一些食物吧</p>
+        <p class="empty-tip">去食物库添加一些食物吧</p>
       </div>
       <div v-else>
         <div
@@ -156,10 +140,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { nutritionApi } from '@/services/api/nutrition.js'
-import { userFoodApi, commonFoodApi } from '@/services/api/food.js'
+import { userFoodApi } from '@/services/api/food.js'
 import { today, addDays, parseDate } from '@/utils/date.js'
 
 const router = useRouter()
@@ -181,10 +165,8 @@ const formData = ref({
 })
 
 // 食物选择相关
-const foodSource = ref('my')
 const searchKeyword = ref('')
 const myFoods = ref([])
-const commonFoods = ref([])
 const loading = ref(false)
 const selectedFood = ref(null)
 const servingAmount = ref(100)
@@ -227,10 +209,9 @@ const actualGrams = computed(() => {
 
 // 计算属性
 const filteredFoods = computed(() => {
-  const foods = foodSource.value === 'my' ? myFoods.value : commonFoods.value
-  if (!searchKeyword.value) return foods
+  if (!searchKeyword.value) return myFoods.value
   const keyword = searchKeyword.value.toLowerCase()
-  return foods.filter(f =>
+  return myFoods.value.filter(f =>
     f.foodName?.toLowerCase().includes(keyword) ||
     f.brand?.toLowerCase().includes(keyword)
   )
@@ -264,12 +245,8 @@ const calculatedCarbs = computed(() => {
 const loadFoods = async () => {
   loading.value = true
   try {
-    const [myRes, commonRes] = await Promise.all([
-      userFoodApi.getList(),
-      commonFoodApi.getList()
-    ])
-    myFoods.value = myRes.data || []
-    commonFoods.value = commonRes.data || []
+    const res = await userFoodApi.getList()
+    myFoods.value = res.data || []
   } catch (error) {
     console.error('加载食物失败:', error)
   } finally {
@@ -355,11 +332,6 @@ const saveRecord = async () => {
 
 const goBack = () => router.back()
 
-// 监听食物来源切换
-watch(foodSource, () => {
-  searchKeyword.value = ''
-})
-
 // 加载编辑数据
 const loadEditData = async (id) => {
   try {
@@ -412,11 +384,9 @@ onMounted(() => {
   if (route.query.foodId && route.query.foodName) {
     // 先加载食物列表，然后选中指定食物
     loadFoods().then(() => {
-      const foods = route.query.foodType === 'common' ? commonFoods.value : myFoods.value
-      const food = foods.find(f => f.id == route.query.foodId)
+      const food = myFoods.value.find(f => f.id == route.query.foodId)
       if (food) {
         selectFood(food)
-        foodSource.value = route.query.foodType === 'common' ? 'common' : 'my'
       }
     })
   } else if (!route.params.id) {
@@ -543,30 +513,6 @@ onMounted(() => {
 
 .search-input:focus {
   border-color: #4CAF50;
-}
-
-/* 来源切换 */
-.source-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.source-tab {
-  flex: 1;
-  padding: 10px;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  text-align: center;
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.source-tab.active {
-  border-color: #4CAF50;
-  background: #E8F5E9;
-  color: #4CAF50;
 }
 
 /* 食物列表 */
