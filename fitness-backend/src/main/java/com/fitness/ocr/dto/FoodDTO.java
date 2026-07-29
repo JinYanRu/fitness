@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 食物 DTO（通用）
@@ -50,6 +51,11 @@ public class FoodDTO {
     private String source;
 
     private String remark;
+
+    /**
+     * 可选计量单位列表
+     */
+    private List<FoodUnitDTO> units;
 
     private LocalDateTime createdAt;
 

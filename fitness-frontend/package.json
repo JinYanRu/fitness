@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
+    "code-inspector-plugin": "^2.0.5",
     "vite": "^5.2.8"
   }
 }

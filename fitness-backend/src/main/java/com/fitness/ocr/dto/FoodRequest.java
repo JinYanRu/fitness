@@ -5,8 +5,10 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 创建/更新食物请求
@@ -47,4 +49,10 @@ public class FoodRequest {
     private String remark;
 
     private String source;
+
+    /**
+     * 可选计量单位列表
+     */
+    @Valid
+    private List<FoodUnitDTO> units;
 }

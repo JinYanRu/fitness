@@ -26,6 +26,12 @@ const routes = [
     meta: { title: '食物库', requiresAuth: true }
   },
   {
+    path: '/food/edit/:id?',
+    name: 'FoodEdit',
+    component: () => import('./pages/food/food-edit.vue'),
+    meta: { title: '编辑食物', requiresAuth: true }
+  },
+  {
     path: '/record',
     name: 'Record',
     component: () => import('./pages/record/nutrition-record.vue'),

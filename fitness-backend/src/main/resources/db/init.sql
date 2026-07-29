@@ -144,6 +144,20 @@ CREATE TABLE IF NOT EXISTS user_food (
     INDEX idx_user_create (user_id, create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户私有食物库';
 
+-- 食物计量单位表（支持多单位换算）
+CREATE TABLE IF NOT EXISTS food_unit (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+    food_id BIGINT NOT NULL COMMENT '食物ID (user_food.id)',
+    food_type VARCHAR(16) NOT NULL DEFAULT 'user' COMMENT '食物类型: user/common',
+    unit_name VARCHAR(20) NOT NULL COMMENT '单位名称(如: 包、片、个、杯)',
+    unit_value DECIMAL(10,2) NOT NULL COMMENT '单位对应基准单位的量(如1包=250g)',
+    is_default TINYINT DEFAULT 0 COMMENT '是否默认单位: 0-否, 1-是',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_food (food_id, food_type),
+    UNIQUE KEY uk_food_unit (food_id, food_type, unit_name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='食物计量单位表';
+
 -- 公共食物库
 CREATE TABLE IF NOT EXISTS common_food (
     id BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',

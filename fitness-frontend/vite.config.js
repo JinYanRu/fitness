@@ -1,9 +1,16 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import { codeInspectorPlugin } from 'code-inspector-plugin'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    // 代码审查插件：按住 Option+Shift(Mac) 或 Alt+Shift(Windows) 点击元素可跳转到源码
+    codeInspectorPlugin({
+      bundler: 'vite',
+    })
+  ],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src')

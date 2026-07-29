@@ -21,6 +21,22 @@
       </div>
     </div>
 
+    <!-- 记录日期 -->
+    <div class="record-date-section">
+      <div class="section-title">记录日期</div>
+      <div class="date-pickable">
+        <span class="date-main">{{ recordDateMain }}</span>
+        <span class="date-sub">{{ formData.recordDate }}</span>
+        <input
+          type="date"
+          class="date-native-input"
+          :value="formData.recordDate"
+          :max="todayDateStr"
+          @change="formData.recordDate = $event.target.value"
+        />
+      </div>
+    </div>
+
     <!-- 搜索食物（仅新增模式显示） -->
     <div v-if="!editId" class="search-section">
       <input
@@ -65,7 +81,10 @@
           <div class="food-info">
             <div class="food-name">{{ food.foodName }}</div>
             <div v-if="food.brand" class="food-brand">{{ food.brand }}</div>
-            <div class="food-serving">每 {{ food.servingSize || 100 }}{{ food.servingUnit || 'g' }}</div>
+            <div class="food-serving">
+              每 {{ food.servingSize || 100 }}{{ food.servingUnit || 'g' }}
+              <span v-if="food.units && food.units.length > 0" class="has-units">• 有快捷单位</span>
+            </div>
           </div>
           <div class="food-calories">{{ food.calories || 0 }} kcal</div>
         </div>
@@ -75,16 +94,38 @@
     <!-- 食用量输入 -->
     <div v-if="selectedFood" class="serving-section">
       <div class="section-title">食用量</div>
-      <div class="serving-input">
+
+      <!-- 单位选择器 -->
+      <div class="amount-input-group">
         <input
           v-model.number="servingAmount"
           type="number"
           min="0"
-          step="10"
+          step="1"
           class="amount-input"
         />
-        <span class="unit">{{ selectedFood.servingUnit || 'g' }}</span>
+        <select v-model="selectedUnitName" class="unit-select" @change="onUnitChange">
+          <!-- 快捷单位优先展示 -->
+          <option
+            v-for="unit in availableUnits"
+            :key="unit.unitName"
+            :value="unit.unitName"
+          >
+            {{ unit.unitName }}
+          </option>
+          <option value="">{{ selectedFood.servingUnit || 'g' }}</option>
+        </select>
       </div>
+
+      <!-- 单位换算提示 -->
+      <div v-if="selectedUnitName && currentUnitValue" class="unit-hint">
+        1{{ selectedUnitName }} = {{ currentUnitValue }}{{ selectedFood.servingUnit || 'g' }}
+        <span v-if="servingAmount" class="unit-total">
+          = {{ actualGrams }}{{ selectedFood.servingUnit || 'g' }}
+        </span>
+      </div>
+
+      <!-- 营养预览 -->
       <div class="nutrition-preview">
         <div class="preview-item">
           <span class="preview-label">热量</span>
@@ -119,6 +160,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { nutritionApi } from '@/services/api/nutrition.js'
 import { userFoodApi, commonFoodApi } from '@/services/api/food.js'
+import { today, addDays, parseDate } from '@/utils/date.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -132,10 +174,10 @@ const mealTypes = [
   { value: 'workout', label: '健身餐', icon: '💪' }
 ]
 
-// 表单数据
+// 表单数据（recordDate 优先取首页传入的日期，默认今天）
 const formData = ref({
   mealType: 'lunch',
-  recordDate: new Date().toISOString().split('T')[0]
+  recordDate: route.query.date || today()
 })
 
 // 食物选择相关
@@ -146,10 +188,42 @@ const commonFoods = ref([])
 const loading = ref(false)
 const selectedFood = ref(null)
 const servingAmount = ref(100)
+const selectedUnitName = ref('') // 选中的单位名称
 
 // 保存状态
 const isSaving = ref(false)
 const editId = ref(null)
+
+// 记录日期展示
+const todayDateStr = today()
+const recordDateMain = computed(() => {
+  const date = formData.value.recordDate
+  if (date === todayDateStr) return '今天'
+  if (date === addDays(todayDateStr, -1)) return '昨天'
+  const d = parseDate(date)
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+})
+
+// 可用单位列表（不包含基准单位）
+const availableUnits = computed(() => {
+  if (!selectedFood.value?.units) return []
+  return selectedFood.value.units
+})
+
+// 当前选中单位的换算值
+const currentUnitValue = computed(() => {
+  if (!selectedUnitName.value || !selectedFood.value?.units) return null
+  const unit = selectedFood.value.units.find(u => u.unitName === selectedUnitName.value)
+  return unit?.unitValue || null
+})
+
+// 实际克数（根据单位换算）
+const actualGrams = computed(() => {
+  if (!selectedUnitName.value || !currentUnitValue.value) {
+    return servingAmount.value
+  }
+  return servingAmount.value * currentUnitValue.value
+})
 
 // 计算属性
 const filteredFoods = computed(() => {
@@ -164,25 +238,25 @@ const filteredFoods = computed(() => {
 
 const calculatedCalories = computed(() => {
   if (!selectedFood.value || !servingAmount.value) return 0
-  const ratio = servingAmount.value / (selectedFood.value.servingSize || 100)
+  const ratio = actualGrams.value / (selectedFood.value.servingSize || 100)
   return Math.round((selectedFood.value.calories || 0) * ratio)
 })
 
 const calculatedProtein = computed(() => {
   if (!selectedFood.value || !servingAmount.value) return 0
-  const ratio = servingAmount.value / (selectedFood.value.servingSize || 100)
+  const ratio = actualGrams.value / (selectedFood.value.servingSize || 100)
   return Math.round((selectedFood.value.protein || 0) * ratio * 10) / 10
 })
 
 const calculatedFat = computed(() => {
   if (!selectedFood.value || !servingAmount.value) return 0
-  const ratio = servingAmount.value / (selectedFood.value.servingSize || 100)
+  const ratio = actualGrams.value / (selectedFood.value.servingSize || 100)
   return Math.round((selectedFood.value.fat || 0) * ratio * 10) / 10
 })
 
 const calculatedCarbs = computed(() => {
   if (!selectedFood.value || !servingAmount.value) return 0
-  const ratio = servingAmount.value / (selectedFood.value.servingSize || 100)
+  const ratio = actualGrams.value / (selectedFood.value.servingSize || 100)
   return Math.round((selectedFood.value.carbohydrates || 0) * ratio * 10) / 10
 })
 
@@ -211,7 +285,27 @@ const searchFoods = () => {
 // 选择食物
 const selectFood = (food) => {
   selectedFood.value = food
-  servingAmount.value = food.servingSize || 100
+  // 有自定义(快捷)单位时，默认选中第一个自定义单位
+  const units = food.units || []
+  if (units.length > 0) {
+    selectedUnitName.value = units[0].unitName
+    servingAmount.value = 1 // 自定义单位默认数量为 1（如：1包）
+  } else {
+    // 没有自定义单位，使用基准单位
+    selectedUnitName.value = ''
+    servingAmount.value = food.servingSize || 100
+  }
+}
+
+// 单位切换时，重置数量为1（如果切换到自定义单位）
+const onUnitChange = () => {
+  if (selectedUnitName.value) {
+    // 切换到自定义单位时，默认数量为1
+    servingAmount.value = 1
+  } else {
+    // 切换回基准单位时，恢复为基准份量
+    servingAmount.value = selectedFood.value?.servingSize || 100
+  }
 }
 
 // 保存记录
@@ -223,12 +317,17 @@ const saveRecord = async () => {
 
   isSaving.value = true
   try {
-    const ratio = servingAmount.value / (selectedFood.value.servingSize || 100)
+    const ratio = actualGrams.value / (selectedFood.value.servingSize || 100)
     const saveData = {
       foodName: selectedFood.value.foodName,
       brand: selectedFood.value.brand,
-      servingAmount: servingAmount.value,
+      servingAmount: actualGrams.value, // 保存实际克数
       servingUnit: selectedFood.value.servingUnit || 'g',
+      // 如果使用了自定义单位，记录额外信息
+      ...(selectedUnitName.value && {
+        displayAmount: servingAmount.value,
+        displayUnit: selectedUnitName.value
+      }),
       calories: calculatedCalories.value,
       protein: calculatedProtein.value,
       fat: calculatedFat.value,
@@ -270,7 +369,7 @@ const loadEditData = async (id) => {
 
     // 填充用餐类型和日期
     formData.value.mealType = record.mealType || 'lunch'
-    formData.value.recordDate = record.recordDate || new Date().toISOString().split('T')[0]
+    formData.value.recordDate = record.recordDate || today()
 
     // 填充食用量
     servingAmount.value = record.servingAmount || 100
@@ -293,7 +392,8 @@ const loadEditData = async (id) => {
       carbohydrates: Math.round((record.carbohydrates || 0) * baseRatio * 10) / 10,
       fiber: record.fiber != null ? Math.round(record.fiber * baseRatio * 10) / 10 : null,
       sodium: record.sodium != null ? Math.round(record.sodium * baseRatio) : null,
-      sugar: record.sugar != null ? Math.round(record.sugar * baseRatio * 10) / 10 : null
+      sugar: record.sugar != null ? Math.round(record.sugar * baseRatio * 10) / 10 : null,
+      units: []
     }
   } catch (error) {
     console.error('加载编辑数据失败:', error)
@@ -386,6 +486,45 @@ onMounted(() => {
 .meal-type.active {
   background: #4CAF50;
   color: #fff;
+}
+
+/* 记录日期 */
+.record-date-section {
+  background: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.date-pickable {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.date-main {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+.date-sub {
+  font-size: 13px;
+  color: #999;
+}
+
+.date-native-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
 }
 
 /* 搜索 */
@@ -489,6 +628,11 @@ onMounted(() => {
   margin-top: 4px;
 }
 
+.has-units {
+  color: #2196F3;
+  font-size: 11px;
+}
+
 .food-calories {
   font-size: 14px;
   color: #4CAF50;
@@ -503,11 +647,11 @@ onMounted(() => {
   margin-top: 16px;
 }
 
-.serving-input {
+.amount-input-group {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .amount-input {
@@ -519,9 +663,29 @@ onMounted(() => {
   outline: none;
 }
 
-.unit {
-  font-size: 16px;
+.unit-select {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+  cursor: pointer;
+  min-width: 80px;
+}
+
+.unit-hint {
+  font-size: 12px;
   color: #666;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #f5f5f5;
+  border-radius: 6px;
+}
+
+.unit-total {
+  color: #4CAF50;
+  font-weight: 500;
 }
 
 .nutrition-preview {

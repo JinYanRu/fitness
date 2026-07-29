@@ -91,7 +91,7 @@
           v-for="food in commonFoods"
           :key="food.id"
           class="food-card"
-          @click="selectFood(food)"
+          @click="selectCommonFood(food)"
         >
           <div class="food-name">{{ food.foodName }}</div>
           <div v-if="food.brand" class="food-brand">{{ food.brand }}</div>
@@ -571,16 +571,44 @@ const handleAddFood = async () => {
   }
 }
 
-// 选择食物（跳转到记录页面）
+// 选择食物（跳转到编辑页面）
 const selectFood = (food) => {
   router.push({
-    path: '/record',
-    query: {
-      foodId: food.id,
-      foodName: food.foodName,
-      foodType: activeTab.value === 'my' ? 'user' : 'common'
-    }
+    path: `/food/edit/${food.id}`
   })
+}
+
+// 选择公共食物（弹出操作菜单）
+const selectCommonFood = (food) => {
+  // 公共食物库的食物可以选择：添加到饮食记录 或 复制到我的食物库
+  if (confirm(`是否将「${food.foodName}」复制到我的食物库？`)) {
+    copyToMyFoods(food)
+  }
+}
+
+// 复制公共食物到我的食物库
+const copyToMyFoods = async (food) => {
+  try {
+    await userFoodApi.create({
+      foodName: food.foodName,
+      brand: food.brand,
+      servingSize: food.servingSize,
+      servingUnit: food.servingUnit,
+      calories: food.calories,
+      protein: food.protein,
+      fat: food.fat,
+      carbohydrates: food.carbohydrates,
+      fiber: food.fiber,
+      sodium: food.sodium,
+      sugar: food.sugar
+    })
+    alert('已复制到我的食物库！')
+    // 切换到我的食物库标签
+    activeTab.value = 'my'
+    loadMyFoods()
+  } catch (error) {
+    alert('复制失败: ' + error.message)
+  }
 }
 
 // OCR 相关方法

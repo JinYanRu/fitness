@@ -5,15 +5,38 @@
       <span class="greeting">{{ getGreeting() }}，{{ userInfo.nickname || '用户' }}</span>
     </div>
 
+    <!-- 日期选择 -->
+    <div class="date-bar">
+      <button class="date-arrow" @click="shiftDay(-1)" aria-label="前一天">‹</button>
+      <div class="date-pickable">
+        <div class="date-text">
+          <span class="date-main">{{ selectedDateMain }}</span>
+          <span class="date-sub">{{ selectedDateSub }}</span>
+        </div>
+        <span class="date-cal">📅</span>
+        <input
+          type="date"
+          class="date-native-input"
+          :value="selectedDate"
+          :max="todayDateStr"
+          @change="onPickerChange"
+        />
+      </div>
+      <button class="date-arrow" :disabled="isToday" @click="shiftDay(1)" aria-label="后一天">›</button>
+    </div>
+    <div v-if="!isToday" class="back-today-row">
+      <button class="back-today-btn" @click="goToday">回到今天</button>
+    </div>
+
     <!-- 热量统计卡片 -->
     <div class="calorie-card">
       <div class="calorie-header">
-        <span class="calorie-title">今日热量</span>
-        <span class="calorie-date">{{ todayDate }}</span>
+        <span class="calorie-title">{{ isToday ? '今日热量' : selectedDateMain + '热量' }}</span>
+        <span class="calorie-date">{{ selectedDateShort }}</span>
       </div>
       <div class="calorie-main">
         <div class="calorie-circle">
-          <div class="calorie-value">{{ todayStats.totalCalories || 0 }}</div>
+          <div class="calorie-value">{{ dayStats.totalCalories || 0 }}</div>
           <div class="calorie-unit">kcal</div>
         </div>
         <div class="calorie-target" v-if="targetCalories">
@@ -36,7 +59,7 @@
       <div class="nutrient-item">
         <div class="nutrient-header">
           <span class="nutrient-name">蛋白质</span>
-          <span class="nutrient-value">{{ todayStats.totalProtein || 0 }}g</span>
+          <span class="nutrient-value">{{ dayStats.totalProtein || 0 }}g</span>
         </div>
         <div class="nutrient-bar">
           <div class="nutrient-fill protein" :style="{ width: proteinProgress + '%' }"></div>
@@ -45,7 +68,7 @@
       <div class="nutrient-item">
         <div class="nutrient-header">
           <span class="nutrient-name">脂肪</span>
-          <span class="nutrient-value">{{ todayStats.totalFat || 0 }}g</span>
+          <span class="nutrient-value">{{ dayStats.totalFat || 0 }}g</span>
         </div>
         <div class="nutrient-bar">
           <div class="nutrient-fill fat" :style="{ width: fatProgress + '%' }"></div>
@@ -54,7 +77,7 @@
       <div class="nutrient-item">
         <div class="nutrient-header">
           <span class="nutrient-name">碳水</span>
-          <span class="nutrient-value">{{ todayStats.totalCarbohydrates || 0 }}g</span>
+          <span class="nutrient-value">{{ dayStats.totalCarbohydrates || 0 }}g</span>
         </div>
         <div class="nutrient-bar">
           <div class="nutrient-carbs" :style="{ width: carbsProgress + '%' }"></div>
@@ -77,15 +100,15 @@
     <!-- 今日记录列表 -->
     <div class="section">
       <div class="section-header">
-        <span class="section-title">今日记录 ({{ todayRecords.length }})</span>
+        <span class="section-title">{{ isToday ? '今日记录' : selectedDateMain + '记录' }} ({{ dayRecords.length }})</span>
         <span class="section-more" @click="goToHistory">历史 ></span>
       </div>
 
       <div v-if="loading" class="loading">加载中...</div>
 
-      <div class="record-list" v-else-if="todayRecords.length > 0">
+      <div class="record-list" v-else-if="dayRecords.length > 0">
         <div
-          v-for="record in todayRecords"
+          v-for="record in dayRecords"
           :key="record.id"
           class="record-item"
           @click="viewDetail(record)"
@@ -105,7 +128,7 @@
 
       <div class="empty-state" v-else>
         <span class="empty-icon">🍽️</span>
-        <span class="empty-text">今日暂无记录</span>
+        <span class="empty-text">{{ isToday ? '今日暂无记录' : selectedDateMain + '暂无记录' }}</span>
         <span class="empty-tip">点击上方按钮开始记录</span>
       </div>
     </div>
@@ -113,10 +136,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { nutritionApi } from '@/services/api/nutrition.js'
 import { authApi } from '@/services/api/auth.js'
+import { today, addDays, parseDate } from '@/utils/date.js'
 
 const router = useRouter()
 
@@ -130,40 +154,74 @@ const targetCarbs = ref(null)
 
 // 统计数据
 const loading = ref(false)
-const todayStats = ref({
+const dayStats = ref({
   recordCount: 0,
   totalCalories: 0,
   totalProtein: 0,
   totalFat: 0,
   totalCarbohydrates: 0
 })
-const todayRecords = ref([])
+const dayRecords = ref([])
 
-const todayDate = computed(() => {
-  const now = new Date()
-  return `${now.getMonth() + 1}月${now.getDate()}日`
+// 日期选择
+const todayDateStr = today()
+const selectedDate = ref(todayDateStr)
+
+const isToday = computed(() => selectedDate.value === todayDateStr)
+
+// 主标签：今天 / 昨天 / M月D日
+const selectedDateMain = computed(() => {
+  if (selectedDate.value === todayDateStr) return '今天'
+  if (selectedDate.value === addDays(todayDateStr, -1)) return '昨天'
+  const d = parseDate(selectedDate.value)
+  return `${d.getMonth() + 1}月${d.getDate()}日`
 })
+
+// 副标签：yyyy-MM-dd · 周X
+const selectedDateSub = computed(() => {
+  const d = parseDate(selectedDate.value)
+  const weekDays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  return `${selectedDate.value} · ${weekDays[d.getDay()]}`
+})
+
+// 热量卡片右侧短日期
+const selectedDateShort = computed(() => {
+  const d = parseDate(selectedDate.value)
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+})
+
+// 日期切换
+const shiftDay = (n) => {
+  selectedDate.value = addDays(selectedDate.value, n)
+}
+const goToday = () => {
+  selectedDate.value = todayDateStr
+}
+const onPickerChange = (e) => {
+  const val = e.target.value
+  if (val) selectedDate.value = val
+}
 
 // 进度计算
 const calorieProgress = computed(() => {
   if (!targetCalories.value) return 0
-  const progress = Math.round((todayStats.value.totalCalories / targetCalories.value) * 100)
+  const progress = Math.round((dayStats.value.totalCalories / targetCalories.value) * 100)
   return Math.min(progress, 150)
 })
 
 const proteinProgress = computed(() => {
   if (!targetProtein.value) return 0
-  return Math.min(Math.round((todayStats.value.totalProtein / targetProtein.value) * 100), 100)
+  return Math.min(Math.round((dayStats.value.totalProtein / targetProtein.value) * 100), 100)
 })
 
 const fatProgress = computed(() => {
   if (!targetFat.value) return 0
-  return Math.min(Math.round((todayStats.value.totalFat / targetFat.value) * 100), 100)
+  return Math.min(Math.round((dayStats.value.totalFat / targetFat.value) * 100), 100)
 })
 
 const carbsProgress = computed(() => {
   if (!targetCarbs.value) return 0
-  return Math.min(Math.round((todayStats.value.totalCarbohydrates / targetCarbs.value) * 100), 100)
+  return Math.min(Math.round((dayStats.value.totalCarbohydrates / targetCarbs.value) * 100), 100)
 })
 
 // 获取问候语
@@ -190,20 +248,18 @@ const getMealTypeLabel = (type) => {
   return labels[type] || '🍽️'
 }
 
-// 加载数据
-const loadData = async () => {
+// 加载当日数据（随所选日期变化）
+const loadDayData = async () => {
   loading.value = true
   try {
-    // 并行加载
-    const [statsRes, recordsRes, profileRes] = await Promise.all([
-      nutritionApi.getTodayStats(),
-      nutritionApi.getByDate(new Date().toISOString().split('T')[0]),
-      authApi.getProfileDetail()
+    const [statsRes, recordsRes] = await Promise.all([
+      nutritionApi.getStatsByDate(selectedDate.value),
+      nutritionApi.getByDate(selectedDate.value)
     ])
 
     // 处理统计
     if (statsRes.code === 200 && statsRes.data) {
-      todayStats.value = {
+      dayStats.value = {
         recordCount: statsRes.data.recordCount || 0,
         totalCalories: statsRes.data.totalCalories || 0,
         totalProtein: statsRes.data.totalProtein || 0,
@@ -214,10 +270,19 @@ const loadData = async () => {
 
     // 处理记录列表
     if (recordsRes.code === 200 && recordsRes.data) {
-      todayRecords.value = recordsRes.data
+      dayRecords.value = recordsRes.data
     }
+  } catch (error) {
+    console.error('加载数据失败:', error)
+  } finally {
+    loading.value = false
+  }
+}
 
-    // 处理用户档案
+// 加载用户档案与目标（与日期无关，仅加载一次）
+const loadProfile = async () => {
+  try {
+    const profileRes = await authApi.getProfileDetail()
     if (profileRes.code === 200 && profileRes.data) {
       userProfile.value = profileRes.data
       targetCalories.value = profileRes.data.targetCalories
@@ -226,9 +291,7 @@ const loadData = async () => {
       targetCarbs.value = profileRes.data.targetCarbs
     }
   } catch (error) {
-    console.error('加载数据失败:', error)
-  } finally {
-    loading.value = false
+    console.error('加载档案失败:', error)
   }
 }
 
@@ -245,7 +308,7 @@ const loadUserInfo = () => {
 }
 
 // 跳转
-const goToRecord = () => router.push('/record')
+const goToRecord = () => router.push({ path: '/record', query: { date: selectedDate.value } })
 const goToFoodLibrary = () => router.push('/food/library')
 const goToHistory = () => router.push('/history')
 
@@ -253,9 +316,13 @@ const viewDetail = (record) => {
   router.push(`/record/${record.id}`)
 }
 
+// 日期变化时重新加载当日数据
+watch(selectedDate, loadDayData)
+
 onMounted(() => {
   loadUserInfo()
-  loadData()
+  loadProfile()
+  loadDayData()
 })
 </script>
 
@@ -275,6 +342,96 @@ onMounted(() => {
   font-size: 20px;
   font-weight: 500;
   color: #333;
+}
+
+/* 日期选择条 */
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #fff;
+  border-radius: 12px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+.date-arrow {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border: none;
+  background: #f5f5f5;
+  border-radius: 50%;
+  font-size: 18px;
+  color: #333;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.date-arrow:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.date-pickable {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.date-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.date-main {
+  font-size: 16px;
+  font-weight: 500;
+  color: #333;
+}
+
+.date-sub {
+  font-size: 12px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.date-cal {
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+.date-native-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.back-today-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.back-today-btn {
+  border: 1px solid #4CAF50;
+  background: #fff;
+  color: #4CAF50;
+  border-radius: 16px;
+  padding: 4px 16px;
+  font-size: 13px;
+  cursor: pointer;
 }
 
 /* 热量卡片 */
