@@ -65,6 +65,9 @@ public class NutritionService {
             record.setRecordDate(LocalDate.now());
         }
 
+        // 直接新增的记录默认为已吃（正常状态）
+        record.setEaten(true);
+
         NutritionRecord saved = nutritionRecordRepository.save(record);
         log.info("创建营养记录成功: userId={}, id={}, foodName={}", userId, saved.getId(), saved.getFoodName());
 
@@ -180,6 +183,71 @@ public class NutritionService {
     }
 
     /**
+     * 导入指定日期的记录到今天，标记为未吃
+     * @param userId 用户ID
+     * @param sourceDate 源日期 yyyy-MM-dd（通常为昨天）
+     * @return 导入条数
+     */
+    @Transactional
+    public int importRecords(Long userId, String sourceDate) {
+        LocalDate source = LocalDate.parse(sourceDate);
+        LocalDate today = LocalDate.now();
+        List<NutritionRecord> sourceRecords = nutritionRecordRepository
+                .findByUserIdAndRecordDate(String.valueOf(userId), source);
+
+        if (sourceRecords.isEmpty()) {
+            return 0;
+        }
+
+        List<NutritionRecord> newRecords = sourceRecords.stream().map(r -> {
+            NutritionRecord copy = new NutritionRecord();
+            copy.setUserId(r.getUserId());
+            copy.setRecordDate(today);
+            copy.setMealType(r.getMealType());
+            copy.setFoodName(r.getFoodName());
+            copy.setBrand(r.getBrand());
+            copy.setServingAmount(r.getServingAmount());
+            copy.setServingUnit(r.getServingUnit());
+            copy.setCalories(r.getCalories());
+            copy.setProtein(r.getProtein());
+            copy.setFat(r.getFat());
+            copy.setSaturatedFat(r.getSaturatedFat());
+            copy.setCarbohydrates(r.getCarbohydrates());
+            copy.setFiber(r.getFiber());
+            copy.setSodium(r.getSodium());
+            copy.setSugar(r.getSugar());
+            copy.setCalcium(r.getCalcium());
+            copy.setRemark(r.getRemark());
+            copy.setOcrText(r.getOcrText());
+            copy.setEaten(false); // 导入的记录默认未吃，待用户确认
+            return copy;
+        }).collect(Collectors.toList());
+
+        List<NutritionRecord> saved = nutritionRecordRepository.saveAll(newRecords);
+        log.info("导入记录成功: userId={}, sourceDate={}, 导入{}条", userId, sourceDate, saved.size());
+        return saved.size();
+    }
+
+    /**
+     * 标记记录是否已吃
+     */
+    @Transactional
+    public NutritionRecordDTO markEaten(Long userId, Long id, Boolean eaten) {
+        NutritionRecord record = nutritionRecordRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("记录不存在: " + id));
+
+        // 权限检查
+        if (!String.valueOf(userId).equals(record.getUserId())) {
+            throw new RuntimeException("无权限修改此记录");
+        }
+
+        record.setEaten(eaten);
+        NutritionRecord saved = nutritionRecordRepository.save(record);
+        log.info("标记已吃状态: userId={}, id={}, eaten={}", userId, id, eaten);
+        return toDTO(saved);
+    }
+
+    /**
      * 获取用户今日统计
      */
     public DailyNutritionStatsDTO getTodayStats(Long userId) {
@@ -224,6 +292,7 @@ public class NutritionService {
                 .ocrText(record.getOcrText())
                 .createdAt(record.getCreateTime())
                 .updatedAt(record.getUpdateTime())
+                .eaten(record.getEaten())
                 .build();
     }
 

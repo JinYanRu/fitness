@@ -54,7 +54,7 @@ public interface NutritionRecordRepository extends JpaRepository<NutritionRecord
            "COALESCE(SUM(n.sodium), 0), " +
            "COALESCE(SUM(n.sugar), 0), " +
            "COALESCE(SUM(n.calcium), 0) " +
-           "FROM NutritionRecord n WHERE n.recordDate = :date")
+           "FROM NutritionRecord n WHERE n.recordDate = :date AND n.eaten = true")
     Object[] getStatsByDate(@Param("date") LocalDate date);
 
     /**
@@ -70,7 +70,7 @@ public interface NutritionRecordRepository extends JpaRepository<NutritionRecord
            "COALESCE(SUM(sodium), 0), " +
            "COALESCE(SUM(sugar), 0), " +
            "COALESCE(SUM(calcium), 0) " +
-           "FROM nutrition_record WHERE user_id = :userId AND DATE(record_date) = DATE(:date)", nativeQuery = true)
+           "FROM nutrition_record WHERE user_id = :userId AND DATE(record_date) = DATE(:date) AND eaten = 1", nativeQuery = true)
     Object[] getStatsByUserIdAndDate(@Param("userId") String userId, @Param("date") LocalDate date);
 
     /**
@@ -81,7 +81,7 @@ public interface NutritionRecordRepository extends JpaRepository<NutritionRecord
            "COALESCE(SUM(n.protein), 0), " +
            "COALESCE(SUM(n.fat), 0) " +
            "FROM NutritionRecord n " +
-           "WHERE n.recordDate BETWEEN :startDate AND :endDate " +
+           "WHERE n.recordDate BETWEEN :startDate AND :endDate AND n.eaten = true " +
            "GROUP BY n.recordDate ORDER BY n.recordDate DESC")
     List<Object[]> getDailyStatsByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
 }

@@ -140,6 +140,12 @@ public class NutritionRecord {
     @Column(name = "update_time")
     private LocalDateTime updateTime;
 
+    /**
+     * 是否已吃：false=导入待确认，true=正常已吃
+     */
+    @Column(name = "eaten", nullable = false)
+    private Boolean eaten = true;
+
     @PrePersist
     protected void onCreate() {
         createTime = LocalDateTime.now();

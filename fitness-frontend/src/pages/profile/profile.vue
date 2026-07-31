@@ -377,10 +377,6 @@
       </div>
     </div>
 
-    <!-- Loading -->
-    <div class="loading-overlay" v-if="saving">
-      <div class="loading-spinner"></div>
-    </div>
   </div>
 </template>
 
@@ -394,7 +390,6 @@ const router = useRouter()
 // 用户信息
 const userInfo = ref(null)
 const profile = ref(null)
-const saving = ref(false)
 
 // 选择器显示状态
 const showBirthdayPicker = ref(false)
@@ -515,40 +510,68 @@ const loadData = async () => {
   }
 }
 
-// 保存档案
-const saveProfile = async (data) => {
-  saving.value = true
-  try {
-    const res = await authApi.updateProfile(data)
-    if (res.code === 200 && res.data) {
-      profile.value = res.data
-      showToast('已保存')
-      return true
+// 服务端计算、前端不直接编辑的派生字段：保存成功后从服务端同步
+const DERIVED_FIELDS = ['bmr', 'tdee', 'targetCalories', 'targetProtein', 'targetFat', 'targetCarbs', 'age']
+
+// 保存队列：串行化后台保存，避免并发响应乱序覆盖本地状态
+let saveChain = Promise.resolve()
+
+// 保存档案（乐观更新 + 后台串行保存，不阻塞 UI、不显示 loading）
+const saveProfile = (data) => {
+  // 记录本次改动前的旧值，用于保存失败时回滚
+  const prevValues = {}
+  Object.keys(data).forEach(k => {
+    prevValues[k] = profile.value?.[k]
+  })
+
+  // 1. 乐观更新：立即把改动写回本地，UI 即时响应
+  profile.value = { ...profile.value, ...data }
+
+  // 2. 后台串行保存
+  saveChain = saveChain.then(async () => {
+    try {
+      const res = await authApi.updateProfile(data)
+      if (res.code === 200 && res.data) {
+        // 仅同步服务端重新计算的派生字段，避免覆盖后续乐观改动
+        const sync = {}
+        DERIVED_FIELDS.forEach(f => {
+          if (res.data[f] !== undefined && res.data[f] !== null) {
+            sync[f] = res.data[f]
+          }
+        })
+        profile.value = { ...profile.value, ...sync }
+        showToast('已保存')
+      } else {
+        profile.value = { ...profile.value, ...prevValues }
+        showToast('保存失败')
+      }
+    } catch (error) {
+      console.error('保存失败:', error)
+      profile.value = { ...profile.value, ...prevValues }
+      showToast('保存失败')
     }
-    return false
-  } catch (error) {
-    console.error('保存失败:', error)
-    showToast('保存失败')
-    return false
-  } finally {
-    saving.value = false
-  }
+  })
+
+  return saveChain
 }
 
-// 显示 toast 提示
+// 显示 toast 提示（复用单个元素，避免快速连续保存时堆叠）
+let toastEl = null
+let toastTimer = null
 const showToast = (message) => {
-  const toast = document.createElement('div')
-  toast.className = 'custom-toast'
-  toast.textContent = message
-  document.body.appendChild(toast)
-  setTimeout(() => {
-    toast.classList.add('show')
-  }, 10)
-  setTimeout(() => {
-    toast.classList.remove('show')
-    setTimeout(() => {
-      document.body.removeChild(toast)
-    }, 300)
+  if (!toastEl) {
+    toastEl = document.createElement('div')
+    toastEl.className = 'custom-toast'
+    document.body.appendChild(toastEl)
+  }
+  toastEl.textContent = message
+  toastEl.classList.remove('show')
+  // 强制重排以重新触发过渡动画
+  void toastEl.offsetWidth
+  toastEl.classList.add('show')
+  clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toastEl.classList.remove('show')
   }, 1500)
 }
 
@@ -968,33 +991,6 @@ onMounted(() => {
   background: #E8F5E9;
   color: #4CAF50;
   font-weight: 500;
-}
-
-/* Loading 遮罩 */
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 2000;
-}
-
-.loading-spinner {
-  width: 32px;
-  height: 32px;
-  border: 3px solid #fff;
-  border-top-color: #4CAF50;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* Toast 提示 */

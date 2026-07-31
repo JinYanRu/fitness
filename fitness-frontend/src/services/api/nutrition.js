@@ -46,6 +46,23 @@ export const nutritionApi = {
   },
 
   /**
+   * 导入指定日期的记录到今天（导入的记录默认未吃）
+   * @param {string} sourceDate - 源日期 yyyy-MM-dd（通常为昨天）
+   */
+  importFrom(sourceDate) {
+    return request.post('/nutrition/import', { sourceDate })
+  },
+
+  /**
+   * 标记记录是否已吃
+   * @param {number|string} id - 记录ID
+   * @param {boolean} eaten - 是否已吃
+   */
+  markEaten(id, eaten) {
+    return request.put(`/nutrition/${id}/eaten`, { eaten })
+  },
+
+  /**
    * 获取今日统计
    */
   getTodayStats() {

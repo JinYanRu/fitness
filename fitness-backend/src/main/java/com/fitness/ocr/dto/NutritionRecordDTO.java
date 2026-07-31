@@ -59,4 +59,7 @@ public class NutritionRecordDTO {
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;
+
+    /** 是否已吃：false=导入待确认，true=正常已吃 */
+    private Boolean eaten;
 }

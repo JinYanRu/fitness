@@ -111,6 +111,7 @@ CREATE TABLE IF NOT EXISTS nutrition_record (
     calcium DECIMAL(10,2) COMMENT '钙(mg)',
     remark VARCHAR(256) COMMENT '备注',
     ocr_text TEXT COMMENT '原始OCR文本',
+    eaten TINYINT(1) NOT NULL DEFAULT 1 COMMENT '是否已吃:0=未吃(导入待确认) 1=已吃(正常)',
     create_time DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     update_time DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     INDEX idx_user_id (user_id),

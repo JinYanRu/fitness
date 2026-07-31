@@ -101,7 +101,10 @@
     <div class="section">
       <div class="section-header">
         <span class="section-title">{{ isToday ? '今日记录' : selectedDateMain + '记录' }} ({{ dayRecords.length }})</span>
-        <span class="section-more" @click="goToHistory">历史 ></span>
+        <div class="section-actions">
+          <button v-if="isToday" class="import-btn" @click="handleImportYesterday">📥 导入昨天</button>
+          <span class="section-more" @click="goToHistory">历史 ></span>
+        </div>
       </div>
 
       <div v-if="loading" class="loading">加载中...</div>
@@ -110,19 +113,40 @@
         <div
           v-for="record in dayRecords"
           :key="record.id"
-          class="record-item"
-          @click="viewDetail(record)"
+          class="record-swipe-wrapper"
         >
-          <div class="record-info">
-            <span class="record-meal">{{ getMealTypeLabel(record.mealType) }}</span>
-            <span class="record-name">{{ record.foodName }}</span>
-            <span class="record-amount" v-if="record.servingAmount">
-              {{ record.servingAmount }}{{ record.servingUnit || 'g' }}
-            </span>
+          <div
+            class="record-swipe-content"
+            :class="{ swiping: swipingId === record.id, uneaten: record.eaten === false }"
+            :style="{ transform: `translateX(${swipeState[record.id] || 0}px)` }"
+            @click="onRecordClick(record)"
+            @touchstart="onTouchStart($event, record)"
+            @touchmove="onTouchMove($event, record)"
+            @touchend="onTouchEnd(record)"
+          >
+            <div class="record-info">
+              <span class="record-meal">
+                {{ getMealTypeLabel(record.mealType) }}
+                <span v-if="record.eaten === false" class="eaten-tag">待吃</span>
+              </span>
+              <span class="record-name">{{ record.foodName }}</span>
+              <span class="record-amount" v-if="record.servingAmount">
+                {{ record.servingAmount }}{{ record.servingUnit || 'g' }}
+              </span>
+            </div>
+            <div class="record-right">
+              <button
+                v-if="record.eaten === false"
+                class="eaten-check"
+                @click.stop="markAsEaten(record)"
+                aria-label="标记已吃"
+              >✓</button>
+              <div class="record-calories">
+                {{ record.calories || 0 }} kcal
+              </div>
+            </div>
           </div>
-          <div class="record-calories">
-            {{ record.calories || 0 }} kcal
-          </div>
+          <button class="record-delete-btn" @click.stop="handleDelete(record)">删除</button>
         </div>
       </div>
 
@@ -136,7 +160,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { nutritionApi } from '@/services/api/nutrition.js'
 import { authApi } from '@/services/api/auth.js'
@@ -251,6 +275,8 @@ const getMealTypeLabel = (type) => {
 // 加载当日数据（随所选日期变化）
 const loadDayData = async () => {
   loading.value = true
+  // 切换日期时收起所有左滑状态
+  Object.keys(swipeState).forEach((id) => delete swipeState[id])
   try {
     const [statsRes, recordsRes] = await Promise.all([
       nutritionApi.getStatsByDate(selectedDate.value),
@@ -314,6 +340,147 @@ const goToHistory = () => router.push('/history')
 
 const viewDetail = (record) => {
   router.push(`/record/${record.id}`)
+}
+
+// 左滑删除
+const DELETE_WIDTH = 80 // 删除按钮宽度
+const swipeState = reactive({}) // 每条记录当前的横向偏移量，按 id 索引
+const swipingId = ref(null) // 正在拖拽的记录 id（用于拖拽时去掉过渡动画）
+const swipeStart = reactive({ x: 0, y: 0, base: 0, id: null, horizontal: null })
+let suppressClick = false // 拖拽发生后阻止本次 click 跳转详情
+
+const onTouchStart = (e, record) => {
+  const t = e.touches[0]
+  swipeStart.x = t.clientX
+  swipeStart.y = t.clientY
+  swipeStart.base = swipeState[record.id] || 0
+  swipeStart.id = record.id
+  swipeStart.horizontal = null
+  swipingId.value = record.id
+  // 收起其它已展开的项，保证同一时刻只有一项展开
+  Object.keys(swipeState).forEach((id) => {
+    if (id !== String(record.id) && swipeState[id] !== 0) swipeState[id] = 0
+  })
+}
+
+const onTouchMove = (e, record) => {
+  if (swipeStart.id !== record.id) return
+  const t = e.touches[0]
+  const dx = t.clientX - swipeStart.x
+  const dy = t.clientY - swipeStart.y
+  // 首次移动判定方向：垂直滑动则交给页面滚动，不触发左滑
+  if (swipeStart.horizontal === null) {
+    if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return
+    swipeStart.horizontal = Math.abs(dx) > Math.abs(dy)
+    if (!swipeStart.horizontal) {
+      swipingId.value = null
+      return
+    }
+  }
+  if (!swipeStart.horizontal) return
+  suppressClick = true
+  let next = swipeStart.base + dx
+  if (next > 0) next = 0 // 不允许右滑超过原位
+  if (next < -DELETE_WIDTH) next = -DELETE_WIDTH
+  swipeState[record.id] = next
+}
+
+const onTouchEnd = (record) => {
+  if (swipeStart.id !== record.id) return
+  const current = swipeState[record.id] || 0
+  // 滑过一半则展开删除按钮，否则回弹收起
+  swipeState[record.id] = current < -DELETE_WIDTH / 2 ? -DELETE_WIDTH : 0
+  swipingId.value = null
+  swipeStart.id = null
+}
+
+const onRecordClick = (record) => {
+  if (suppressClick) {
+    suppressClick = false
+    return
+  }
+  // 点击已展开的项时收起，不跳转详情
+  if ((swipeState[record.id] || 0) !== 0) {
+    swipeState[record.id] = 0
+    return
+  }
+  viewDetail(record)
+}
+
+const handleDelete = async (record) => {
+  if (!confirm(`确定要删除「${record.foodName}」这条记录吗？`)) return
+  try {
+    const res = await nutritionApi.delete(record.id)
+    if (res.code === 200) {
+      delete swipeState[record.id]
+      await loadDayData()
+    } else {
+      alert(res.message || '删除失败')
+    }
+  } catch (error) {
+    alert('删除失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 导入昨天的记录到今天（导入的记录标记为未吃，需逐条点 ✓ 确认）
+const handleImportYesterday = async () => {
+  const yesterday = addDays(todayDateStr, -1)
+  try {
+    // 先查昨天记录数，用于确认提示
+    const yRes = await nutritionApi.getByDate(yesterday)
+    const yCount = (yRes.code === 200 && yRes.data) ? yRes.data.length : 0
+    if (yCount === 0) {
+      alert('昨天没有可导入的记录')
+      return
+    }
+    if (!confirm(`将导入昨天 ${yCount} 条记录？\n导入的记录默认为「未吃」，需逐条点 ✓ 确认后才计入今日热量。`)) return
+    const res = await nutritionApi.importFrom(yesterday)
+    if (res.code === 200) {
+      alert(`已导入 ${res.data} 条记录，吃完后记得点 ✓ 确认`)
+      await loadDayData()
+    } else {
+      alert(res.message || '导入失败')
+    }
+  } catch (error) {
+    alert('导入失败: ' + (error.message || '未知错误'))
+  }
+}
+
+// 本地把一条记录的营养计入/移出当日统计（标记已吃时即时更新，避免整页刷新）
+const round1 = (n) => Math.round(n * 10) / 10
+const addRecordToStats = (record) => {
+  const s = dayStats.value
+  s.recordCount = (s.recordCount || 0) + 1
+  s.totalCalories = round1((Number(s.totalCalories) || 0) + (Number(record.calories) || 0))
+  s.totalProtein = round1((Number(s.totalProtein) || 0) + (Number(record.protein) || 0))
+  s.totalFat = round1((Number(s.totalFat) || 0) + (Number(record.fat) || 0))
+  s.totalCarbohydrates = round1((Number(s.totalCarbohydrates) || 0) + (Number(record.carbohydrates) || 0))
+}
+const removeRecordFromStats = (record) => {
+  const s = dayStats.value
+  s.recordCount = Math.max(0, (s.recordCount || 0) - 1)
+  s.totalCalories = round1((Number(s.totalCalories) || 0) - (Number(record.calories) || 0))
+  s.totalProtein = round1((Number(s.totalProtein) || 0) - (Number(record.protein) || 0))
+  s.totalFat = round1((Number(s.totalFat) || 0) - (Number(record.fat) || 0))
+  s.totalCarbohydrates = round1((Number(s.totalCarbohydrates) || 0) - (Number(record.carbohydrates) || 0))
+}
+
+// 标记记录为已吃（乐观更新：先即时变更视觉与统计，后台异步落库，失败回滚）
+const markAsEaten = async (record) => {
+  record.eaten = true
+  addRecordToStats(record)
+  try {
+    const res = await nutritionApi.markEaten(record.id, true)
+    if (res.code !== 200) {
+      record.eaten = false
+      removeRecordFromStats(record)
+      alert(res.message || '标记失败')
+    }
+  } catch (error) {
+    record.eaten = false
+    removeRecordFromStats(record)
+    alert('标记失败: ' + (error.message || '未知错误'))
+  }
 }
 
 // 日期变化时重新加载当日数据
@@ -568,6 +735,20 @@ onMounted(() => {
 
 .section-title { font-size: 16px; font-weight: 500; color: #333; }
 .section-more { font-size: 14px; color: #4CAF50; cursor: pointer; }
+.section-actions { display: flex; align-items: center; gap: 12px; }
+.import-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px;
+  font-size: 13px;
+  color: #ff9800;
+  background: #fff3e0;
+  border: 1px solid #ffd9a8;
+  border-radius: 16px;
+  cursor: pointer;
+  line-height: 1.2;
+}
+.import-btn:active { transform: scale(0.96); }
 
 .record-list {
   background: #fff;
@@ -575,16 +756,44 @@ onMounted(() => {
   overflow: hidden;
 }
 
-.record-item {
+.record-swipe-wrapper {
+  position: relative;
+  overflow: hidden;
+}
+
+.record-swipe-content {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 16px;
+  background: #fff;
   border-bottom: 1px solid #f0f0f0;
   cursor: pointer;
+  transition: transform 0.25s ease;
 }
 
-.record-item:last-child { border-bottom: none; }
+.record-swipe-content.swiping {
+  transition: none; /* 跟手拖拽时去掉过渡，保证流畅 */
+}
+
+.record-swipe-wrapper:last-child .record-swipe-content {
+  border-bottom: none;
+}
+
+.record-delete-btn {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 80px;
+  border: none;
+  background: #ff4d4f;
+  color: #fff;
+  font-size: 15px;
+  cursor: pointer;
+}
 
 .record-info { flex: 1; }
 .record-meal { font-size: 12px; color: #4CAF50; display: block; }
@@ -595,6 +804,48 @@ onMounted(() => {
   font-size: 16px;
   font-weight: 500;
   color: #4CAF50;
+}
+
+.record-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* 未吃（导入待确认）状态：背景须保持不透明，否则会透出下方的删除按钮 */
+.record-swipe-content.uneaten {
+  background: #fafafa;
+}
+.record-swipe-content.uneaten .record-name {
+  color: #999;
+}
+.record-swipe-content.uneaten .record-calories {
+  color: #c4c4c4;
+}
+
+.eaten-tag {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: #ff9800;
+  background: #fff3e0;
+  border-radius: 8px;
+  vertical-align: middle;
+}
+
+.eaten-check {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: 50%;
+  border: 1.5px solid #4CAF50;
+  background: #fff;
+  color: #4CAF50;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
 }
 
 /* 空状态 */

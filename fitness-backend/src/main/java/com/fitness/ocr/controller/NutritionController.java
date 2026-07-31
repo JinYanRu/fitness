@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 营养记录控制器
@@ -77,6 +78,32 @@ public class NutritionController {
         log.info("删除营养记录: userId={}, id={}", userId, id);
         nutritionService.deleteRecord(userId, id);
         return Result.success();
+    }
+
+    /**
+     * 导入指定日期的记录到今天（标记为未吃）
+     */
+    @PostMapping("/import")
+    public Result<Integer> importRecords(
+            @RequestAttribute("userId") Long userId,
+            @Valid @RequestBody ImportRecordRequest request) {
+        log.info("导入记录: userId={}, sourceDate={}", userId, request.getSourceDate());
+        int count = nutritionService.importRecords(userId, request.getSourceDate());
+        return Result.success(count);
+    }
+
+    /**
+     * 标记记录是否已吃
+     */
+    @PutMapping("/{id}/eaten")
+    public Result<NutritionRecordDTO> markEaten(
+            @RequestAttribute("userId") Long userId,
+            @PathVariable Long id,
+            @RequestBody Map<String, Boolean> body) {
+        Boolean eaten = body.getOrDefault("eaten", Boolean.TRUE);
+        log.info("标记已吃: userId={}, id={}, eaten={}", userId, id, eaten);
+        NutritionRecordDTO record = nutritionService.markEaten(userId, id, eaten);
+        return Result.success(record);
     }
 
     /**
