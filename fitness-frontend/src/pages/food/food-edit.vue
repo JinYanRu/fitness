@@ -43,33 +43,7 @@
 
     <!-- 常用单位 -->
     <div class="section">
-      <div class="section-header">
-        <div class="section-title">常用单位 (可选)</div>
-        <button class="btn-add-unit" @click="addUnit">+ 添加单位</button>
-      </div>
-      <div class="unit-tip">添加常用单位后，记录饮食时可以快速选择（如：1包=250g）</div>
-
-      <div v-if="foodData.units && foodData.units.length > 0" class="units-list">
-        <div v-for="(unit, index) in foodData.units" :key="index" class="unit-item">
-          <div class="unit-inputs">
-            <div class="unit-input-group">
-              <label>单位名称</label>
-              <input v-model="unit.unitName" type="text" placeholder="如：包、片、个" />
-            </div>
-            <div class="unit-input-group">
-              <label>等于</label>
-              <div class="unit-value-input">
-                <input v-model.number="unit.unitValue" type="number" min="0" placeholder="250" />
-                <span class="unit-base">{{ foodData.servingUnit || 'g' }}</span>
-              </div>
-            </div>
-          </div>
-          <button class="btn-remove-unit" @click="removeUnit(index)">删除</button>
-        </div>
-      </div>
-      <div v-else class="no-units">
-        <span>暂无常用单位，点击上方按钮添加</span>
-      </div>
+      <FoodUnitEditor v-model="foodData.units" :serving-unit="foodData.servingUnit" />
     </div>
 
     <!-- 营养成分 -->
@@ -149,6 +123,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { userFoodApi } from '@/services/api/food.js'
 import { aiApi } from '@/services/api/ai.js'
+import FoodUnitEditor from '@/components/FoodUnitEditor.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -197,23 +172,6 @@ const carbsPercent = computed(() => {
   if (totalMacro.value === 0) return 0
   return Math.round((foodData.value.carbohydrates || 0) / totalMacro.value * 100)
 })
-
-// 添加单位
-const addUnit = () => {
-  if (!foodData.value.units) {
-    foodData.value.units = []
-  }
-  foodData.value.units.push({
-    unitName: '',
-    unitValue: null,
-    isDefault: false
-  })
-}
-
-// 删除单位
-const removeUnit = (index) => {
-  foodData.value.units.splice(index, 1)
-}
 
 // AI 智能填充
 const handleAiFill = async () => {

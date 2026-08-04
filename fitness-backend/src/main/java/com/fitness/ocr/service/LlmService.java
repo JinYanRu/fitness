@@ -3,7 +3,11 @@ package com.fitness.ocr.service;
 import com.alibaba.fastjson2.JSONArray;
 import com.alibaba.fastjson2.JSONObject;
 import com.fitness.ocr.config.LlmProperties;
+import com.fitness.ocr.dto.DailyNutritionStatsDTO;
+import com.fitness.ocr.dto.DietAnalysisResultDTO;
+import com.fitness.ocr.dto.NutritionRecordDTO;
 import com.fitness.ocr.dto.OcrResultDTO;
+import com.fitness.ocr.dto.UserProfileDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
@@ -11,6 +15,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -52,6 +57,56 @@ public class LlmService {
             "    \"sodium\": 0,\n" +
             "    \"calcium\": 0\n" +
             "  }\n" +
+            "}";
+
+    /**
+     * 每日饮食分析结果 JSON 模板
+     */
+    private static final String DIET_ANALYSIS_JSON_TEMPLATE = "{\n" +
+            "  \"score\": 82,\n" +
+            "  \"summary\": \"总体评价\",\n" +
+            "  \"items\": [\n" +
+            "    {\n" +
+            "      \"name\": \"热量\",\n" +
+            "      \"icon\": \"🔥\",\n" +
+            "      \"intake\": 1850,\n" +
+            "      \"target\": 2000,\n" +
+            "      \"unit\": \"kcal\",\n" +
+            "      \"status\": \"偏低\",\n" +
+            "      \"comment\": \"略低于目标，建议加餐\"\n" +
+            "    },\n" +
+            "    {\n" +
+            "      \"name\": \"蛋白质\",\n" +
+            "      \"icon\": \"💪\",\n" +
+            "      \"intake\": 95,\n" +
+            "      \"target\": 120,\n" +
+            "      \"unit\": \"g\",\n" +
+            "      \"status\": \"达标\",\n" +
+            "      \"comment\": \"优质蛋白比例高\"\n" +
+            "    },\n" +
+            "    {\n" +
+            "      \"name\": \"脂肪\",\n" +
+            "      \"icon\": \"🥑\",\n" +
+            "      \"intake\": 58,\n" +
+            "      \"target\": 60,\n" +
+            "      \"unit\": \"g\",\n" +
+            "      \"status\": \"合理\",\n" +
+            "      \"comment\": \"摄入合理\"\n" +
+            "    },\n" +
+            "    {\n" +
+            "      \"name\": \"碳水\",\n" +
+            "      \"icon\": \"🍚\",\n" +
+            "      \"intake\": 210,\n" +
+            "      \"target\": 220,\n" +
+            "      \"unit\": \"g\",\n" +
+            "      \"status\": \"偏高\",\n" +
+            "      \"comment\": \"晚餐偏多\"\n" +
+            "    }\n" +
+            "  ],\n" +
+            "  \"suggestions\": [\n" +
+            "    \"建议1\",\n" +
+            "    \"建议2\"\n" +
+            "  ]\n" +
             "}";
 
     private final OkHttpClient httpClient = new OkHttpClient.Builder()
@@ -162,6 +217,193 @@ public class LlmService {
         } catch (Exception e) {
             log.error("大模型根据食物名称填充失败", e);
             return new OcrResultDTO.FoodInfo();
+        }
+    }
+
+    /**
+     * 分析每日饮食（开启深度思考）
+     * 综合用户身体数据和当日饮食记录，生成结构化分析报告
+     *
+     * @param profile 用户档案
+     * @param records 当日饮食记录
+     * @param stats   当日营养统计
+     * @return 饮食分析结果，失败返回 null
+     */
+    public DietAnalysisResultDTO analyzeDailyDiet(UserProfileDTO profile,
+                                                  List<NutritionRecordDTO> records,
+                                                  DailyNutritionStatsDTO stats) {
+        try {
+            String prompt = buildDietAnalysisPrompt(profile, records, stats);
+
+            log.info("调用大模型分析每日饮食（开启深度思考）...");
+
+            String response = callLlmApi(prompt, true);
+
+            if (response == null || response.isEmpty()) {
+                log.error("大模型返回空结果");
+                return null;
+            }
+
+            log.debug("大模型原始返回: {}", response);
+
+            DietAnalysisResultDTO result = parseDietAnalysisResult(response);
+            log.info("饮食分析成功: score={}", result != null ? result.getScore() : null);
+            return result;
+
+        } catch (Exception e) {
+            log.error("大模型分析每日饮食失败", e);
+            return null;
+        }
+    }
+
+    /**
+     * 构建每日饮食分析提示词
+     */
+    private String buildDietAnalysisPrompt(UserProfileDTO profile,
+                                           List<NutritionRecordDTO> records,
+                                           DailyNutritionStatsDTO stats) {
+        StringBuilder prompt = new StringBuilder();
+        prompt.append("你是资深营养师。根据用户的身体数据和今日饮食记录，分析今日饮食是否合理。\n\n");
+
+        prompt.append("【用户身体数据】\n");
+        prompt.append("性别：").append(profile.getGenderText()).append("\n");
+        prompt.append("年龄：").append(profile.getAge()).append("岁\n");
+        prompt.append("身高：").append(profile.getHeight()).append("cm\n");
+        prompt.append("体重：").append(profile.getWeight()).append("kg\n");
+        prompt.append("健身目标：").append(profile.getGoalText()).append("\n");
+        prompt.append("活动水平：").append(profile.getActivityLevelText()).append("\n");
+        prompt.append("基础代谢(BMR)：").append(profile.getBmr()).append("kcal\n");
+        prompt.append("每日总消耗(TDEE)：").append(profile.getTdee()).append("kcal\n\n");
+
+        prompt.append("【每日营养目标】\n");
+        prompt.append("热量：").append(profile.getTargetCalories()).append("kcal\n");
+        prompt.append("蛋白质：").append(profile.getTargetProtein()).append("g\n");
+        prompt.append("脂肪：").append(profile.getTargetFat()).append("g\n");
+        prompt.append("碳水：").append(profile.getTargetCarbs()).append("g\n\n");
+
+        prompt.append("【今日饮食记录】\n");
+        if (records == null || records.isEmpty()) {
+            prompt.append("（无记录）\n\n");
+        } else {
+            for (NutritionRecordDTO r : records) {
+                prompt.append("- ").append(r.getMealType() != null ? r.getMealType() : "加餐")
+                        .append("：").append(r.getFoodName());
+                if (r.getServingAmount() != null) {
+                    prompt.append(" ").append(r.getServingAmount())
+                            .append(r.getServingUnit() != null ? r.getServingUnit() : "g");
+                }
+                prompt.append("（热量").append(r.getCalories() != null ? r.getCalories() : 0).append("kcal");
+                prompt.append("，蛋白").append(r.getProtein() != null ? r.getProtein() : 0).append("g");
+                prompt.append("，脂肪").append(r.getFat() != null ? r.getFat() : 0).append("g");
+                prompt.append("，碳水").append(r.getCarbohydrates() != null ? r.getCarbohydrates() : 0).append("g）\n");
+            }
+            prompt.append("\n");
+        }
+
+        prompt.append("【今日摄入总计】\n");
+        prompt.append("热量：").append(stats.getTotalCalories()).append("kcal\n");
+        prompt.append("蛋白质：").append(stats.getTotalProtein()).append("g\n");
+        prompt.append("脂肪：").append(stats.getTotalFat()).append("g\n");
+        prompt.append("碳水：").append(stats.getTotalCarbohydrates()).append("g\n\n");
+
+        prompt.append("【分析要求】\n");
+        prompt.append("1. 综合用户身体数据、目标和今日饮食，给出 0-100 的总评分\n");
+        prompt.append("2. 分别分析热量、蛋白质、脂肪、碳水四项，对比摄入与目标，给出状态(达标/偏高/偏低/合理)和点评\n");
+        prompt.append("3. 给出 2-4 条具体可执行的改进建议\n");
+        prompt.append("4. 点评和建议要结合用户的目标(增肌/减脂/维持)和活动水平\n\n");
+
+        prompt.append("【返回JSON格式】\n");
+        prompt.append("```json\n");
+        prompt.append(DIET_ANALYSIS_JSON_TEMPLATE);
+        prompt.append("\n```\n\n");
+        prompt.append("只返回JSON，不要有任何其他文字说明，确保JSON格式有效。\n");
+
+        return prompt.toString();
+    }
+
+    /**
+     * 从大模型响应中解析饮食分析结果
+     */
+    private DietAnalysisResultDTO parseDietAnalysisResult(String response) {
+        try {
+            String jsonStr = response.trim();
+
+            // 处理火山引擎返回的嵌套数组格式
+            if (jsonStr.startsWith("[")) {
+                JSONArray responseArray = JSONArray.parseArray(jsonStr);
+                if (responseArray != null && !responseArray.isEmpty()) {
+                    for (int i = 0; i < responseArray.size(); i++) {
+                        JSONObject item = responseArray.getJSONObject(i);
+                        if ("message".equals(item.getString("type"))) {
+                            JSONArray contentArray = item.getJSONArray("content");
+                            if (contentArray != null && !contentArray.isEmpty()) {
+                                for (int j = 0; j < contentArray.size(); j++) {
+                                    JSONObject contentItem = contentArray.getJSONObject(j);
+                                    if ("output_text".equals(contentItem.getString("type"))) {
+                                        jsonStr = contentItem.getString("text");
+                                        break;
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // 去除可能的 markdown 代码块标记
+            jsonStr = jsonStr.trim();
+            if (jsonStr.startsWith("```json")) {
+                jsonStr = jsonStr.substring(7);
+            } else if (jsonStr.startsWith("```")) {
+                jsonStr = jsonStr.substring(3);
+            }
+            if (jsonStr.endsWith("```")) {
+                jsonStr = jsonStr.substring(0, jsonStr.length() - 3);
+            }
+            jsonStr = jsonStr.trim();
+
+            // 解析 JSON
+            JSONObject result = JSONObject.parseObject(jsonStr);
+
+            DietAnalysisResultDTO.DietAnalysisResultDTOBuilder builder = DietAnalysisResultDTO.builder();
+            builder.score(result.getInteger("score"));
+            builder.summary(result.getString("summary"));
+
+            // 解析各项分析
+            JSONArray itemsArray = result.getJSONArray("items");
+            List<DietAnalysisResultDTO.AnalysisItem> items = new ArrayList<>();
+            if (itemsArray != null) {
+                for (int i = 0; i < itemsArray.size(); i++) {
+                    JSONObject item = itemsArray.getJSONObject(i);
+                    items.add(DietAnalysisResultDTO.AnalysisItem.builder()
+                            .name(item.getString("name"))
+                            .icon(item.getString("icon"))
+                            .intake(item.getBigDecimal("intake"))
+                            .target(item.getBigDecimal("target"))
+                            .unit(item.getString("unit"))
+                            .status(item.getString("status"))
+                            .comment(item.getString("comment"))
+                            .build());
+                }
+            }
+            builder.items(items);
+
+            // 解析改进建议
+            JSONArray suggestionsArray = result.getJSONArray("suggestions");
+            List<String> suggestions = new ArrayList<>();
+            if (suggestionsArray != null) {
+                for (int i = 0; i < suggestionsArray.size(); i++) {
+                    suggestions.add(suggestionsArray.getString(i));
+                }
+            }
+            builder.suggestions(suggestions);
+
+            return builder.build();
+
+        } catch (Exception e) {
+            log.error("解析大模型返回的饮食分析JSON失败: {}", response, e);
+            return null;
         }
     }
 

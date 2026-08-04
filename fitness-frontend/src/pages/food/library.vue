@@ -115,6 +115,10 @@
               <input v-model.number="newFood.carbohydrates" type="number" />
             </div>
           </div>
+
+          <div class="unit-editor-wrap">
+            <FoodUnitEditor v-model="newFood.units" :serving-unit="newFood.servingUnit" />
+          </div>
         </div>
 
         <div class="modal-footer">
@@ -346,6 +350,7 @@ import { userFoodApi } from '@/services/api/food.js'
 import { aiApi } from '@/services/api/ai.js'
 import ImagePicker from '@/components/ImagePicker.vue'
 import NutritionForm from '@/components/NutritionForm.vue'
+import FoodUnitEditor from '@/components/FoodUnitEditor.vue'
 import ocrManager from '@/services/ocr/init.js'
 
 const router = useRouter()
@@ -366,7 +371,8 @@ const newFood = ref({
   calories: null,
   protein: null,
   fat: null,
-  carbohydrates: null
+  carbohydrates: null,
+  units: [] // 常用单位列表
 })
 
 // OCR 添加
@@ -466,8 +472,14 @@ const handleAddFood = async () => {
     return
   }
 
+  // 过滤掉未填写完整的单位
+  const validUnits = (newFood.value.units || []).filter(u => u.unitName && u.unitValue)
+
   try {
-    await userFoodApi.create(newFood.value)
+    await userFoodApi.create({
+      ...newFood.value,
+      units: validUnits
+    })
     showAddModal.value = false
     loadMyFoods()
 
@@ -480,7 +492,8 @@ const handleAddFood = async () => {
       calories: null,
       protein: null,
       fat: null,
-      carbohydrates: null
+      carbohydrates: null,
+      units: []
     }
   } catch (error) {
     alert('添加失败: ' + error.message)
@@ -1167,5 +1180,12 @@ onMounted(() => {
 
 .supplement-textarea:focus {
   border-color: #9C27B0;
+}
+
+/* 常用单位编辑器 */
+.unit-editor-wrap {
+  margin-top: 8px;
+  padding-top: 12px;
+  border-top: 1px solid #eee;
 }
 </style>

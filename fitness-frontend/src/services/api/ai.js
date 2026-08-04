@@ -30,6 +30,16 @@ export const aiApi = {
    */
   fillNutrition(foodName) {
     return request.post('/ai/fill-nutrition', { foodName })
+  },
+
+  /**
+   * AI 分析每日饮食
+   * 综合身体数据和当日饮食记录，给出评分、各项营养分析和改进建议
+   * @param {string} date - 日期 (yyyy-MM-dd)，可选，默认今天
+   * @returns {Promise} 分析结果
+   */
+  analyzeDiet(date) {
+    return request.post('/ai/analyze-diet', { date })
   }
 }
 

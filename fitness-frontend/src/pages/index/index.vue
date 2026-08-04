@@ -85,6 +85,12 @@
       </div>
     </div>
 
+    <!-- AI 分析饮食 -->
+    <button class="ai-analysis-btn" :disabled="analyzing" @click="handleAnalyzeDiet">
+      <span class="ai-icon">🤖</span>
+      <span class="ai-text">{{ analyzing ? '分析中…' : 'AI 分析今日饮食' }}</span>
+    </button>
+
     <!-- 快捷操作 -->
     <div class="action-buttons">
       <div class="action-btn primary" @click="goToRecord">
@@ -131,7 +137,13 @@
               </span>
               <span class="record-name">{{ record.foodName }}</span>
               <span class="record-amount" v-if="record.servingAmount">
-                {{ record.servingAmount }}{{ record.servingUnit || 'g' }}
+                <template v-if="record.displayUnit">
+                  {{ record.displayAmount }}{{ record.displayUnit }}
+                  <span class="amount-grams">({{ record.servingAmount }}{{ record.servingUnit || 'g' }})</span>
+                </template>
+                <template v-else>
+                  {{ record.servingAmount }}{{ record.servingUnit || 'g' }}
+                </template>
               </span>
             </div>
             <div class="record-right">
@@ -156,6 +168,14 @@
         <span class="empty-tip">点击上方按钮开始记录</span>
       </div>
     </div>
+
+    <!-- AI 分析结果弹窗 -->
+    <DietAnalysisModal
+      :visible="showAnalysis"
+      :result="analysisResult"
+      :loading="analyzing"
+      @close="showAnalysis = false"
+    />
   </div>
 </template>
 
@@ -164,6 +184,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { nutritionApi } from '@/services/api/nutrition.js'
 import { authApi } from '@/services/api/auth.js'
+import { aiApi } from '@/services/api/ai.js'
+import DietAnalysisModal from '@/components/DietAnalysisModal.vue'
 import { today, addDays, parseDate } from '@/utils/date.js'
 
 const router = useRouter()
@@ -175,6 +197,11 @@ const targetCalories = ref(null)
 const targetProtein = ref(null)
 const targetFat = ref(null)
 const targetCarbs = ref(null)
+
+// AI 饮食分析
+const showAnalysis = ref(false)
+const analyzing = ref(false)
+const analysisResult = ref(null)
 
 // 统计数据
 const loading = ref(false)
@@ -337,6 +364,28 @@ const loadUserInfo = () => {
 const goToRecord = () => router.push({ path: '/record', query: { date: selectedDate.value } })
 const goToFoodLibrary = () => router.push('/food/library')
 const goToHistory = () => router.push('/history')
+
+// AI 分析当日饮食
+const handleAnalyzeDiet = async () => {
+  // 先打开弹窗显示 loading，给用户即时反馈
+  showAnalysis.value = true
+  analyzing.value = true
+  analysisResult.value = null
+  try {
+    const res = await aiApi.analyzeDiet(selectedDate.value)
+    if (res.code === 200 && res.data) {
+      analysisResult.value = res.data
+    } else {
+      showAnalysis.value = false
+      alert(res.message || 'AI 分析失败')
+    }
+  } catch (error) {
+    showAnalysis.value = false
+    alert('AI 分析失败: ' + (error.message || '未知错误'))
+  } finally {
+    analyzing.value = false
+  }
+}
 
 const viewDetail = (record) => {
   router.push(`/record/${record.id}`)
@@ -698,6 +747,38 @@ onMounted(() => {
 .nutrient-fill.fat { background: #FF9800; }
 .nutrient-carbs { height: 100%; background: #4CAF50; border-radius: 4px; }
 
+/* AI 分析按钮 */
+.ai-analysis-btn {
+  width: 100%;
+  border: none;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+
+.ai-analysis-btn:active {
+  transform: scale(0.98);
+}
+
+.ai-analysis-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.ai-icon {
+  font-size: 18px;
+}
+
 /* 快捷操作 */
 .action-buttons {
   display: flex;
@@ -799,6 +880,7 @@ onMounted(() => {
 .record-meal { font-size: 12px; color: #4CAF50; display: block; }
 .record-name { font-size: 16px; color: #333; display: block; margin: 4px 0; }
 .record-amount { font-size: 12px; color: #999; }
+.amount-grams { font-size: 11px; color: #bbb; }
 
 .record-calories {
   font-size: 16px;

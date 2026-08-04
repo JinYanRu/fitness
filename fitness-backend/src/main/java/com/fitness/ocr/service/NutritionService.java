@@ -41,6 +41,8 @@ public class NutritionService {
         record.setBrand(request.getBrand());
         record.setServingAmount(request.getServingAmount());
         record.setServingUnit(request.getServingUnit());
+        record.setDisplayAmount(request.getDisplayAmount());
+        record.setDisplayUnit(request.getDisplayUnit());
 
         // 设置营养数据
         record.setCalories(request.getCalories());
@@ -92,6 +94,8 @@ public class NutritionService {
         record.setBrand(request.getBrand());
         record.setServingAmount(request.getServingAmount());
         record.setServingUnit(request.getServingUnit());
+        record.setDisplayAmount(request.getDisplayAmount());
+        record.setDisplayUnit(request.getDisplayUnit());
 
         // 更新营养数据
         record.setCalories(request.getCalories());
@@ -208,6 +212,8 @@ public class NutritionService {
             copy.setBrand(r.getBrand());
             copy.setServingAmount(r.getServingAmount());
             copy.setServingUnit(r.getServingUnit());
+            copy.setDisplayAmount(r.getDisplayAmount());
+            copy.setDisplayUnit(r.getDisplayUnit());
             copy.setCalories(r.getCalories());
             copy.setProtein(r.getProtein());
             copy.setFat(r.getFat());
@@ -279,6 +285,8 @@ public class NutritionService {
                 .brand(record.getBrand())
                 .servingAmount(record.getServingAmount())
                 .servingUnit(record.getServingUnit())
+                .displayAmount(record.getDisplayAmount())
+                .displayUnit(record.getDisplayUnit())
                 .calories(record.getCalories())
                 .protein(record.getProtein())
                 .fat(record.getFat())

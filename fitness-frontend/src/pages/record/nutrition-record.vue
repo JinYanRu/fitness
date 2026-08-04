@@ -343,13 +343,22 @@ const loadEditData = async (id) => {
     formData.value.mealType = record.mealType || 'lunch'
     formData.value.recordDate = record.recordDate || today()
 
-    // 填充食用量
-    servingAmount.value = record.servingAmount || 100
-
     // 将记录中的营养值反算为"每 servingSize 单位"的基准值
     // 这样用户修改食用量时，计算属性能正确重新计算
     const amount = record.servingAmount || 100
     const baseRatio = 100 / amount // 反算到每 100g 的比例
+
+    // 还原快捷单位：若记录用了快捷单位，按 记录克数 ÷ 数量 反推 unitValue，
+    // 保证编辑时展示原单位，且 actualGrams = 数量 × unitValue = 原克数，营养与记录一致
+    let units = []
+    const dispCnt = Number(record.displayAmount)
+    if (record.displayUnit && dispCnt > 0) {
+      units = [{
+        unitName: record.displayUnit,
+        unitValue: amount / dispCnt,
+        isDefault: true
+      }]
+    }
 
     // 构造 selectedFood 对象，用于显示已选食物和计算营养
     selectedFood.value = {
@@ -365,7 +374,16 @@ const loadEditData = async (id) => {
       fiber: record.fiber != null ? Math.round(record.fiber * baseRatio * 10) / 10 : null,
       sodium: record.sodium != null ? Math.round(record.sodium * baseRatio) : null,
       sugar: record.sugar != null ? Math.round(record.sugar * baseRatio * 10) / 10 : null,
-      units: []
+      units: units
+    }
+
+    // 还原单位选择和数量：有快捷单位则选中原单位、数量取记录的数量；否则按克
+    if (units.length > 0) {
+      selectedUnitName.value = record.displayUnit
+      servingAmount.value = dispCnt
+    } else {
+      selectedUnitName.value = ''
+      servingAmount.value = amount
     }
   } catch (error) {
     console.error('加载编辑数据失败:', error)

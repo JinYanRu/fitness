@@ -1,14 +1,23 @@
 package com.fitness.ocr.controller;
 
+import com.fitness.ocr.dto.DailyNutritionStatsDTO;
+import com.fitness.ocr.dto.DietAnalysisResultDTO;
+import com.fitness.ocr.dto.NutritionRecordDTO;
 import com.fitness.ocr.dto.OcrResultDTO;
 import com.fitness.ocr.dto.Result;
+import com.fitness.ocr.dto.UserProfileDTO;
 import com.fitness.ocr.service.LlmService;
+import com.fitness.ocr.service.NutritionService;
 import com.fitness.ocr.service.OcrService;
+import com.fitness.ocr.service.UserProfileService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * AI 识别控制器
@@ -22,6 +31,80 @@ public class AiController {
 
     private final LlmService llmService;
     private final OcrService ocrService;
+    private final UserProfileService userProfileService;
+    private final NutritionService nutritionService;
+
+    /**
+     * AI 分析每日饮食
+     * 综合用户身体数据（身高/体重/性别/年龄/目标/活动水平）和指定日期的饮食记录，
+     * 分析当日饮食是否合理，给出评分、各项营养分析和改进建议
+     *
+     * @param userId  用户ID
+     * @param request 分析请求（date 可选，默认今天）
+     * @return 饮食分析结果
+     */
+    @PostMapping("/analyze-diet")
+    public Result<DietAnalysisResultDTO> analyzeDiet(
+            @RequestAttribute("userId") Long userId,
+            @RequestBody(required = false) DietAnalysisRequest request) {
+        // 解析日期，默认今天
+        LocalDate date;
+        if (request != null && request.getDate() != null && !request.getDate().trim().isEmpty()) {
+            try {
+                date = LocalDate.parse(request.getDate());
+            } catch (Exception e) {
+                return Result.error("日期格式错误，应为 yyyy-MM-dd");
+            }
+        } else {
+            date = LocalDate.now();
+        }
+        log.info("AI 分析每日饮食: userId={}, date={}", userId, date);
+
+        try {
+            // 1. 获取用户档案并校验身体信息是否齐全
+            UserProfileDTO profile = userProfileService.getProfile(userId);
+            if (profile.getGender() == null || profile.getBirthday() == null
+                    || profile.getHeight() == null || profile.getWeight() == null) {
+                return Result.error("请先在「我的」页面完善性别、生日、身高、体重等身体信息");
+            }
+
+            // 2. 获取当日已确认（已吃）的饮食记录和统计
+            List<NutritionRecordDTO> allRecords = nutritionService.getUserRecordsByDate(userId, date);
+            List<NutritionRecordDTO> records = allRecords.stream()
+                    .filter(r -> r.getEaten() == null || Boolean.TRUE.equals(r.getEaten()))
+                    .collect(Collectors.toList());
+
+            if (records.isEmpty()) {
+                return Result.error(date + " 暂无已确认的饮食记录，请先记录并确认今日饮食");
+            }
+
+            DailyNutritionStatsDTO stats = nutritionService.getStatsByDate(userId, date);
+
+            // 3. 调用大模型分析
+            DietAnalysisResultDTO result = llmService.analyzeDailyDiet(profile, records, stats);
+
+            if (result == null) {
+                return Result.error("AI 分析失败，请稍后重试");
+            }
+
+            return Result.success(result);
+
+        } catch (Exception e) {
+            log.error("AI 分析每日饮食异常", e);
+            return Result.error("AI 分析失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 每日饮食分析请求
+     */
+    @lombok.Data
+    public static class DietAnalysisRequest {
+        /**
+         * 分析日期 yyyy-MM-dd（可选，默认今天）
+         */
+        private String date;
+    }
 
     /**
      * AI 解析食谱文本

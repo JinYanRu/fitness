@@ -63,6 +63,20 @@ public class NutritionRecord {
     private String servingUnit;
 
     /**
+     * 快捷单位数量（用快捷单位记录时，如 2包 中的 2）
+     * 为空表示按基准单位（克）记录
+     */
+    @Column(name = "display_amount", precision = 10, scale = 2)
+    private BigDecimal displayAmount;
+
+    /**
+     * 快捷单位名（如 包/个/片）
+     * 为空表示按基准单位（克）记录
+     */
+    @Column(name = "display_unit", length = 16)
+    private String displayUnit;
+
+    /**
      * 能量 (kcal)
      */
     @Column(name = "calories", precision = 10, scale = 2)
