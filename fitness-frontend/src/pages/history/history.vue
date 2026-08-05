@@ -91,6 +91,8 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { nutritionApi } from '@/services/api/nutrition.js'
 
+import { showToast } from '@/utils/toast.js'
+
 const router = useRouter()
 
 // 日期相关
@@ -224,9 +226,9 @@ const confirmClearDay = async () => {
       await nutritionApi.delete(record.id)
     }
     loadData()
-    alert('已清空')
+    showToast('已清空')
   } catch (error) {
-    alert('清空失败')
+    showToast('清空失败')
   }
 }
 

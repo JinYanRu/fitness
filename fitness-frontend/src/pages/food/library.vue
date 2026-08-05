@@ -353,6 +353,8 @@ import NutritionForm from '@/components/NutritionForm.vue'
 import FoodUnitEditor from '@/components/FoodUnitEditor.vue'
 import ocrManager from '@/services/ocr/init.js'
 
+import { showToast } from '@/utils/toast.js'
+
 const router = useRouter()
 
 const searchKeyword = ref('')
@@ -456,10 +458,10 @@ const handleAiFill = async () => {
         newFood.value.servingSize = foodInfo.servingSize
       }
     } else {
-      alert('AI 填充失败: ' + (response.message || '未知错误'))
+      showToast('AI 填充失败: ' + (response.message || '未知错误'))
     }
   } catch (error) {
-    alert('AI 填充失败: ' + error.message)
+    showToast('AI 填充失败: ' + error.message)
   } finally {
     isAiFilling.value = false
   }
@@ -468,7 +470,7 @@ const handleAiFill = async () => {
 // 手动添加食物
 const handleAddFood = async () => {
   if (!newFood.value.foodName) {
-    alert('请输入食物名称')
+    showToast('请输入食物名称')
     return
   }
 
@@ -496,7 +498,7 @@ const handleAddFood = async () => {
       units: []
     }
   } catch (error) {
-    alert('添加失败: ' + error.message)
+    showToast('添加失败: ' + error.message)
   }
 }
 
@@ -518,7 +520,7 @@ const handleImageError = (error) => {
 
 const startOcr = async () => {
   if (!selectedImage.value) {
-    alert('请先选择图片')
+    showToast('请先选择图片')
     return
   }
   ocrStep.value = 2
@@ -570,11 +572,11 @@ const saveOcrFood = async () => {
       sugar: data.sugar,
       remark: data.rawText || ''
     })
-    alert('保存成功！')
+    showToast('保存成功')
     closeOcrModal()
     loadMyFoods()
   } catch (error) {
-    alert('保存失败: ' + error.message)
+    showToast('保存失败: ' + error.message)
   } finally {
     isSaving.value = false
   }
@@ -668,11 +670,11 @@ const saveAiFood = async () => {
       sugar: data.sugar,
       remark: data.rawText || aiRecipeText.value || ''
     })
-    alert('保存成功！')
+    showToast('保存成功')
     closeAiModal()
     loadMyFoods()
   } catch (error) {
-    alert('保存失败: ' + error.message)
+    showToast('保存失败: ' + error.message)
   } finally {
     isAiSaving.value = false
   }

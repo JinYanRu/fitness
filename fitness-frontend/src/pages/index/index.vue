@@ -109,7 +109,7 @@
         <span class="section-title">{{ isToday ? '今日记录' : selectedDateMain + '记录' }} ({{ dayRecords.length }})</span>
         <div class="section-actions">
           <button v-if="isToday" class="import-btn" @click="handleImportYesterday">📥 导入昨天</button>
-          <span class="section-more" @click="goToHistory">历史 ></span>
+          <button v-if="dayRecords.length > 0" class="export-btn" @click="handleExportDiet">📋 导出饮食</button>
         </div>
       </div>
 
@@ -176,6 +176,14 @@
       :loading="analyzing"
       @close="showAnalysis = false"
     />
+
+    <!-- 导出饮食报告弹窗 -->
+    <DietExportModal
+      :visible="showExport"
+      :report-text="exportText"
+      :copied="exportCopied"
+      @close="showExport = false"
+    />
   </div>
 </template>
 
@@ -186,6 +194,11 @@ import { nutritionApi } from '@/services/api/nutrition.js'
 import { authApi } from '@/services/api/auth.js'
 import { aiApi } from '@/services/api/ai.js'
 import DietAnalysisModal from '@/components/DietAnalysisModal.vue'
+import DietExportModal from '@/components/DietExportModal.vue'
+import { generateDietReport } from '@/utils/dietReport.js'
+import { copyText } from '@/utils/clipboard.js'
+
+import { showToast } from '@/utils/toast.js'
 import { today, addDays, parseDate } from '@/utils/date.js'
 
 const router = useRouter()
@@ -202,6 +215,11 @@ const targetCarbs = ref(null)
 const showAnalysis = ref(false)
 const analyzing = ref(false)
 const analysisResult = ref(null)
+
+// 导出饮食报告
+const showExport = ref(false)
+const exportText = ref('')
+const exportCopied = ref(false)
 
 // 统计数据
 const loading = ref(false)
@@ -363,7 +381,6 @@ const loadUserInfo = () => {
 // 跳转
 const goToRecord = () => router.push({ path: '/record', query: { date: selectedDate.value } })
 const goToFoodLibrary = () => router.push('/food/library')
-const goToHistory = () => router.push('/history')
 
 // AI 分析当日饮食
 const handleAnalyzeDiet = async () => {
@@ -377,11 +394,11 @@ const handleAnalyzeDiet = async () => {
       analysisResult.value = res.data
     } else {
       showAnalysis.value = false
-      alert(res.message || 'AI 分析失败')
+      showToast(res.message || 'AI 分析失败')
     }
   } catch (error) {
     showAnalysis.value = false
-    alert('AI 分析失败: ' + (error.message || '未知错误'))
+    showToast('AI 分析失败: ' + (error.message || '未知错误'))
   } finally {
     analyzing.value = false
   }
@@ -464,10 +481,10 @@ const handleDelete = async (record) => {
       delete swipeState[record.id]
       await loadDayData()
     } else {
-      alert(res.message || '删除失败')
+      showToast(res.message || '删除失败')
     }
   } catch (error) {
-    alert('删除失败: ' + (error.message || '未知错误'))
+    showToast('删除失败: ' + (error.message || '未知错误'))
   }
 }
 
@@ -479,20 +496,38 @@ const handleImportYesterday = async () => {
     const yRes = await nutritionApi.getByDate(yesterday)
     const yCount = (yRes.code === 200 && yRes.data) ? yRes.data.length : 0
     if (yCount === 0) {
-      alert('昨天没有可导入的记录')
+      showToast('昨天没有可导入的记录')
       return
     }
     if (!confirm(`将导入昨天 ${yCount} 条记录？\n导入的记录默认为「未吃」，需逐条点 ✓ 确认后才计入今日热量。`)) return
     const res = await nutritionApi.importFrom(yesterday)
     if (res.code === 200) {
-      alert(`已导入 ${res.data} 条记录，吃完后记得点 ✓ 确认`)
+      showToast(`已导入 ${res.data} 条记录，吃完后记得点 ✓ 确认`)
       await loadDayData()
     } else {
-      alert(res.message || '导入失败')
+      showToast(res.message || '导入失败')
     }
   } catch (error) {
-    alert('导入失败: ' + (error.message || '未知错误'))
+    showToast('导入失败: ' + (error.message || '未知错误'))
   }
+}
+
+// 导出当日饮食为可视化文本并复制到剪切板
+const handleExportDiet = async () => {
+  if (!dayRecords.value.length) return
+  exportText.value = generateDietReport({
+    records: dayRecords.value,
+    targets: {
+      calories: targetCalories.value,
+      protein: targetProtein.value,
+      fat: targetFat.value,
+      carbs: targetCarbs.value
+    },
+    dateLabel: selectedDateSub.value
+  })
+  showExport.value = true
+  // 在点击手势内直接复制到剪切板
+  exportCopied.value = await copyText(exportText.value)
 }
 
 // 本地把一条记录的营养计入/移出当日统计（标记已吃时即时更新，避免整页刷新）
@@ -523,12 +558,12 @@ const markAsEaten = async (record) => {
     if (res.code !== 200) {
       record.eaten = false
       removeRecordFromStats(record)
-      alert(res.message || '标记失败')
+      showToast(res.message || '标记失败')
     }
   } catch (error) {
     record.eaten = false
     removeRecordFromStats(record)
-    alert('标记失败: ' + (error.message || '未知错误'))
+    showToast('标记失败: ' + (error.message || '未知错误'))
   }
 }
 
@@ -709,10 +744,10 @@ onMounted(() => {
   position: absolute;
   inset: 9px;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
+  background: #fff;
 }
-.calorie-value { position: relative; z-index: 1; font-size: 28px; font-weight: 800; line-height: 1; }
-.calorie-unit { position: relative; z-index: 1; font-size: 12px; opacity: 0.85; margin-top: 3px; }
+.calorie-value { position: relative; z-index: 1; font-size: 28px; font-weight: 800; line-height: 1; color: var(--primary-700); }
+.calorie-unit { position: relative; z-index: 1; font-size: 12px; color: var(--text-3); margin-top: 3px; }
 
 .calorie-target { flex: 1; min-width: 0; }
 .target-label { font-size: 12px; opacity: 0.82; display: block; }
@@ -836,21 +871,22 @@ onMounted(() => {
   padding: 0 2px;
 }
 .section-title { font-size: 16px; font-weight: 600; color: var(--text-1); }
-.section-more { font-size: 13px; color: var(--primary); font-weight: 500; cursor: pointer; }
 .section-actions { display: flex; align-items: center; gap: 12px; }
-.import-btn {
+.import-btn,
+.export-btn {
   display: inline-flex;
   align-items: center;
   padding: 5px 12px;
   font-size: 13px;
-  color: var(--accent);
-  background: #fff6e6;
-  border: 1px solid #ffe2ad;
+  color: var(--primary-600);
+  background: var(--primary-50);
+  border: 1px solid var(--primary-100);
   border-radius: 999px;
   line-height: 1.2;
   transition: transform 0.12s;
 }
-.import-btn:active { transform: scale(0.96); }
+.import-btn:active,
+.export-btn:active { transform: scale(0.96); }
 
 .record-list {
   background: var(--card);

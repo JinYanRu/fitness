@@ -44,6 +44,12 @@ const routes = [
     meta: { title: '编辑记录', requiresAuth: true }
   },
   {
+    path: '/quick-record',
+    name: 'QuickRecord',
+    component: () => import('./pages/quick-record/quick-record.vue'),
+    meta: { title: '快速记录', requiresAuth: true }
+  },
+  {
     path: '/history',
     name: 'History',
     component: () => import('./pages/history/history.vue'),

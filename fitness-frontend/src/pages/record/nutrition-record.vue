@@ -146,6 +146,8 @@ import { nutritionApi } from '@/services/api/nutrition.js'
 import { userFoodApi } from '@/services/api/food.js'
 import { today, addDays, parseDate } from '@/utils/date.js'
 
+import { showToast } from '@/utils/toast.js'
+
 const router = useRouter()
 const route = useRoute()
 
@@ -288,7 +290,7 @@ const onUnitChange = () => {
 // 保存记录
 const saveRecord = async () => {
   if (!selectedFood.value) {
-    alert('请先选择食物')
+    showToast('请先选择食物')
     return
   }
 
@@ -321,10 +323,10 @@ const saveRecord = async () => {
     } else {
       await nutritionApi.save(saveData)
     }
-    alert('保存成功！')
+    showToast('保存成功')
     router.push('/')
   } catch (error) {
-    alert('保存失败: ' + error.message)
+    showToast('保存失败: ' + error.message)
   } finally {
     isSaving.value = false
   }
@@ -387,7 +389,7 @@ const loadEditData = async (id) => {
     }
   } catch (error) {
     console.error('加载编辑数据失败:', error)
-    alert('加载记录数据失败，请重试')
+    showToast('加载记录数据失败，请重试')
   }
 }
 

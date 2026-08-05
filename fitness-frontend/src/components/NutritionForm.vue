@@ -151,6 +151,8 @@
 <script setup>
 import { ref, reactive, watch, defineProps, defineEmits, defineExpose } from 'vue'
 
+import { showToast } from '@/utils/toast.js'
+
 const props = defineProps({
   initialData: {
     type: Object,
@@ -270,7 +272,7 @@ watch(() => props.initialData, (data) => {
  */
 const validate = () => {
   if (!formData.foodName) {
-    alert('请输入食物名称')
+    showToast('请输入食物名称')
     return false
   }
   return true

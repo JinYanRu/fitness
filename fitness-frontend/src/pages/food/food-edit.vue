@@ -125,6 +125,8 @@ import { userFoodApi } from '@/services/api/food.js'
 import { aiApi } from '@/services/api/ai.js'
 import FoodUnitEditor from '@/components/FoodUnitEditor.vue'
 
+import { showToast } from '@/utils/toast.js'
+
 const router = useRouter()
 const route = useRoute()
 
@@ -192,10 +194,10 @@ const handleAiFill = async () => {
         foodData.value.servingSize = info.servingSize
       }
     } else {
-      alert('AI 填充失败: ' + (response.message || '未知错误'))
+      showToast('AI 填充失败: ' + (response.message || '未知错误'))
     }
   } catch (error) {
-    alert('AI 填充失败: ' + error.message)
+    showToast('AI 填充失败: ' + error.message)
   } finally {
     isAiFilling.value = false
   }
@@ -204,7 +206,7 @@ const handleAiFill = async () => {
 // 保存食物
 const handleSave = async () => {
   if (!foodData.value.foodName?.trim()) {
-    alert('请输入食物名称')
+    showToast('请输入食物名称')
     return
   }
 
@@ -223,10 +225,10 @@ const handleSave = async () => {
     } else {
       await userFoodApi.update(foodId.value, saveData)
     }
-    alert('保存成功！')
+    showToast('保存成功')
     router.push('/food/library')
   } catch (error) {
-    alert('保存失败: ' + error.message)
+    showToast('保存失败: ' + error.message)
   } finally {
     isSaving.value = false
   }
@@ -238,10 +240,10 @@ const handleDelete = async () => {
 
   try {
     await userFoodApi.delete(foodId.value)
-    alert('删除成功！')
+    showToast('删除成功')
     router.push('/food/library')
   } catch (error) {
-    alert('删除失败: ' + error.message)
+    showToast('删除失败: ' + error.message)
   }
 }
 
@@ -269,7 +271,7 @@ const loadFoodData = async (id) => {
     }
   } catch (error) {
     console.error('加载食物数据失败:', error)
-    alert('加载失败，请重试')
+    showToast('加载失败，请重试')
     router.back()
   }
 }

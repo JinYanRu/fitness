@@ -385,6 +385,8 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { authApi } from '@/services/api/auth.js'
 
+import { showToast } from '@/utils/toast.js'
+
 const router = useRouter()
 
 // 用户信息
@@ -555,25 +557,6 @@ const saveProfile = (data) => {
   return saveChain
 }
 
-// 显示 toast 提示（复用单个元素，避免快速连续保存时堆叠）
-let toastEl = null
-let toastTimer = null
-const showToast = (message) => {
-  if (!toastEl) {
-    toastEl = document.createElement('div')
-    toastEl.className = 'custom-toast'
-    document.body.appendChild(toastEl)
-  }
-  toastEl.textContent = message
-  toastEl.classList.remove('show')
-  // 强制重排以重新触发过渡动画
-  void toastEl.offsetWidth
-  toastEl.classList.add('show')
-  clearTimeout(toastTimer)
-  toastTimer = setTimeout(() => {
-    toastEl.classList.remove('show')
-  }, 1500)
-}
 
 // 选择性别
 const selectGender = async (gender) => {
@@ -876,20 +859,4 @@ onMounted(() => {
 .picker-item:active { background: var(--fill); }
 .picker-item.active { background: var(--primary-50); color: var(--primary-600); font-weight: 600; }
 
-/* Toast 提示 */
-.custom-toast {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) scale(0.8);
-  background: rgba(0, 0, 0, 0.72);
-  color: #fff;
-  padding: 12px 24px;
-  border-radius: var(--radius);
-  font-size: 14px;
-  z-index: 3000;
-  opacity: 0;
-  transition: all 0.3s;
-}
-.custom-toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
 </style>
