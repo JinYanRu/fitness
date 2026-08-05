@@ -131,18 +131,15 @@ const handleDelete = () => {
 
 <style scoped>
 .nutrition-card {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-xs);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.15s, box-shadow 0.2s;
 }
-
-.nutrition-card:hover {
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-}
+.nutrition-card:hover { box-shadow: var(--shadow); }
 
 .card-header {
   display: flex;
@@ -150,102 +147,39 @@ const handleDelete = () => {
   align-items: center;
   margin-bottom: 12px;
 }
-
-.food-info {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.food-name {
-  font-size: 18px;
-  font-weight: 500;
-  color: #333;
-}
-
+.food-info { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.food-name { font-size: 17px; font-weight: 600; color: var(--text-1); }
 .food-type {
-  font-size: 12px;
-  color: #fff;
-  background-color: #4CAF50;
+  font-size: 11px;
+  color: var(--primary-600);
+  background: var(--primary-100);
   padding: 3px 10px;
-  border-radius: 4px;
+  border-radius: 999px;
+  font-weight: 500;
+  white-space: nowrap;
 }
+.card-actions { display: flex; gap: 14px; flex-shrink: 0; }
+.action-btn { font-size: 14px; color: var(--text-2); cursor: pointer; transition: color 0.15s; }
+.action-btn.delete { color: var(--danger); }
 
-.card-actions {
-  display: flex;
-  gap: 15px;
-}
+.serving-info { margin-bottom: 12px; }
+.serving-label { font-size: 13px; color: var(--text-3); }
+.serving-value { font-size: 13px; color: var(--text-2); margin-left: 5px; }
 
-.action-btn {
-  font-size: 14px;
-  color: #666;
-  cursor: pointer;
-}
-
-.action-btn.delete {
-  color: #ff4444;
-}
-
-.serving-info {
-  margin-bottom: 12px;
-}
-
-.serving-label {
-  font-size: 14px;
-  color: #999;
-}
-
-.serving-value {
-  font-size: 14px;
-  color: #666;
-  margin-left: 5px;
-}
-
-.nutrition-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
+.nutrition-grid { display: flex; flex-wrap: wrap; gap: 10px; }
 .nutrition-item {
   flex: 1;
   min-width: 100px;
-  background-color: #f8f8f8;
-  border-radius: 8px;
+  background: var(--fill);
+  border-radius: var(--radius-sm);
   padding: 12px;
   text-align: center;
 }
+.nutrition-item.primary { background: var(--primary-50); }
+.nutrition-value { font-size: 18px; font-weight: 700; color: var(--text-1); display: block; }
+.nutrition-item.primary .nutrition-value { color: var(--primary); }
+.nutrition-label { font-size: 11px; color: var(--text-3); display: block; margin-top: 3px; }
 
-.nutrition-item.primary {
-  background-color: #E8F5E9;
-}
-
-.nutrition-value {
-  font-size: 18px;
-  font-weight: 500;
-  color: #333;
-  display: block;
-}
-
-.nutrition-item.primary .nutrition-value {
-  color: #4CAF50;
-}
-
-.nutrition-label {
-  font-size: 11px;
-  color: #999;
-  display: block;
-  margin-top: 3px;
-}
-
-.card-footer {
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid #f0f0f0;
-}
-
-.time-text {
-  font-size: 12px;
-  color: #999;
-}
+.card-footer { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--divider); }
+.time-text { font-size: 12px; color: var(--text-3); }
 </style>

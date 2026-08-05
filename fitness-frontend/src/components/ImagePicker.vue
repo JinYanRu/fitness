@@ -238,37 +238,25 @@ defineExpose({
 </script>
 
 <style scoped>
-.image-picker {
-  padding: 20px;
-}
+.image-picker { padding: 16px; }
 
 .image-preview {
   position: relative;
   width: 100%;
-  min-height: 300px;
-  background-color: #f8f8f8;
-  border-radius: 12px;
+  min-height: 280px;
+  background: var(--fill);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
 }
+.preview-image { max-width: 100%; max-height: 280px; object-fit: contain; cursor: pointer; border-radius: var(--radius); }
 
-.preview-image {
-  max-width: 100%;
-  max-height: 300px;
-  object-fit: contain;
-  cursor: pointer;
-}
-
-.image-actions {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-}
-
+.image-actions { position: absolute; top: 10px; right: 10px; }
 .action-btn {
-  background-color: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
   border-radius: 50%;
   width: 36px;
   height: 36px;
@@ -276,67 +264,38 @@ defineExpose({
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  transition: transform 0.12s;
 }
-
-.action-icon {
-  color: #fff;
-  font-size: 24px;
-  font-weight: bold;
-}
+.action-btn:active { transform: scale(0.9); }
+.action-icon { color: #fff; font-size: 22px; font-weight: bold; }
 
 .pick-area {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 20px;
-  background-color: #f8f8f8;
-  border-radius: 12px;
-  border: 2px dashed #ddd;
+  padding: 48px 20px;
+  background: var(--primary-50);
+  border-radius: var(--radius-lg);
+  border: 2px dashed var(--primary-300);
 }
-
-.pick-buttons {
-  display: flex;
-  gap: 30px;
-  margin-bottom: 20px;
-}
-
+.pick-buttons { display: flex; gap: 28px; margin-bottom: 18px; }
 .pick-btn {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  width: 120px;
-  height: 120px;
-  background-color: #fff;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  width: 118px;
+  height: 118px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: transform 0.15s, box-shadow 0.2s;
 }
-
-.pick-btn:hover {
-  transform: scale(1.02);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-}
-
-.pick-btn:active {
-  transform: scale(0.95);
-}
-
-.btn-icon {
-  font-size: 36px;
-  margin-bottom: 8px;
-}
-
-.btn-text {
-  font-size: 14px;
-  color: #666;
-}
-
-.pick-tip {
-  font-size: 14px;
-  color: #999;
-  margin-top: 10px;
-}
+.pick-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
+.pick-btn:active { transform: scale(0.95); }
+.btn-icon { font-size: 34px; margin-bottom: 8px; }
+.btn-text { font-size: 14px; color: var(--text-2); font-weight: 500; }
+.pick-tip { font-size: 13px; color: var(--text-3); margin-top: 8px; }
 </style>

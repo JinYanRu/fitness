@@ -1,6 +1,12 @@
 <template>
   <div class="register-page">
     <div class="register-header">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M11 20A7 7 0 0 1 4 13C4 8 8 4 13 4c2 0 4 .5 5 1.5C17 12 14 18 8 19" />
+          <path d="M11 20c0-4 1.5-7 4-9.5" />
+        </svg>
+      </div>
       <h1 class="title">注册账号</h1>
       <p class="subtitle">开启健康饮食之旅</p>
     </div>
@@ -110,91 +116,152 @@ const goToLogin = () => {
 </script>
 
 <style scoped>
+.login-page,
 .register-page {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
-  padding: 20px;
+  background: linear-gradient(160deg, #2e7d32 0%, #43a047 48%, #7cb342 100%);
+  padding: 24px 20px calc(var(--safe-bottom) + 24px);
+  position: relative;
+  overflow: hidden;
+}
+.login-page::before,
+.register-page::before {
+  content: '';
+  position: absolute;
+  top: -80px;
+  right: -60px;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.10);
+  filter: blur(2px);
+}
+.login-page::after,
+.register-page::after {
+  content: '';
+  position: absolute;
+  bottom: -90px;
+  left: -70px;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  filter: blur(2px);
 }
 
+.login-header,
 .register-header {
+  position: relative;
+  z-index: 1;
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 32px;
 }
+
+.brand-logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 16px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.18);
+}
+.brand-logo svg { width: 38px; height: 38px; }
 
 .title {
-  font-size: 32px;
+  font-size: 30px;
+  font-weight: 700;
   color: #fff;
-  margin-bottom: 10px;
+  margin-bottom: 8px;
+  letter-spacing: 0.5px;
 }
-
 .subtitle {
-  font-size: 16px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
 }
 
+.login-form,
 .register-form {
+  position: relative;
+  z-index: 1;
   width: 100%;
-  max-width: 300px;
-  background: #fff;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  max-width: 320px;
+  background: rgba(255, 255, 255, 0.97);
+  padding: 28px 24px;
+  border-radius: var(--radius-xl);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.22);
+  backdrop-filter: blur(10px);
 }
 
-.form-item {
-  margin-bottom: 20px;
-}
+.form-item { margin-bottom: 18px; }
 
 .input {
   width: 100%;
-  padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 13px 16px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
   font-size: 16px;
+  color: var(--text-1);
+  background: var(--bg-soft);
   outline: none;
-  transition: border-color 0.3s;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-
+.input::placeholder { color: var(--text-4); }
 .input:focus {
-  border-color: #4CAF50;
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 4px var(--primary-100);
 }
 
 .btn-primary {
   width: 100%;
-  padding: 12px;
-  background: #4CAF50;
+  padding: 13px;
+  background: var(--primary-gradient);
   color: #fff;
-  border: none;
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 16px;
-  cursor: pointer;
-  margin-bottom: 10px;
+  font-weight: 600;
+  box-shadow: var(--shadow-primary);
+  transition: transform 0.12s, box-shadow 0.2s;
+  margin-bottom: 12px;
 }
-
-.btn-primary:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
+.btn-primary:active { transform: translateY(1px) scale(0.99); }
+.btn-primary:disabled { background: #c8c8c8; box-shadow: none; cursor: not-allowed; }
 
 .btn-secondary {
   width: 100%;
   padding: 12px;
   background: transparent;
-  color: #4CAF50;
-  border: 1px solid #4CAF50;
-  border-radius: 8px;
-  font-size: 16px;
-  cursor: pointer;
+  color: var(--primary);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius);
+  font-size: 15px;
+  font-weight: 500;
+  transition: background 0.2s;
 }
+.btn-secondary:active { background: var(--primary-50); }
 
 .error-msg {
-  color: #f44336;
+  position: relative;
+  z-index: 1;
+  color: #fff;
+  background: rgba(244, 67, 54, 0.92);
   text-align: center;
-  margin-top: 20px;
+  margin-top: 16px;
   font-size: 14px;
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  max-width: 320px;
+  box-shadow: 0 8px 20px rgba(244, 67, 54, 0.35);
 }
 </style>

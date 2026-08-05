@@ -7,6 +7,9 @@
         <span class="current-month">{{ currentMonthText }}</span>
         <button class="nav-btn" @click="nextMonth">›</button>
       </div>
+      <div class="weekdays">
+        <span>日</span><span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span>
+      </div>
       <div class="date-grid">
         <div
           v-for="day in calendarDays"
@@ -235,18 +238,18 @@ onMounted(loadData)
 
 <style scoped>
 .history-page {
-  padding: 16px;
-  background: #f5f5f5;
+  padding: calc(var(--safe-top) + 14px) 16px calc(var(--tab-h) + var(--safe-bottom) + 28px);
+  background: linear-gradient(180deg, #e7f1e9 0%, var(--bg) 24%);
   min-height: 100vh;
-  padding-bottom: 80px;
 }
 
 /* 日历 */
 .date-picker {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
   padding: 16px;
   margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
 }
 
 .date-nav {
@@ -254,24 +257,43 @@ onMounted(loadData)
   justify-content: center;
   align-items: center;
   gap: 20px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
 
 .nav-btn {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border: none;
-  background: #f5f5f5;
+  background: var(--fill);
   border-radius: 50%;
   font-size: 18px;
-  cursor: pointer;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.12s;
 }
+.nav-btn:active { transform: scale(0.88); background: var(--primary-100); }
 
 .current-month {
-  font-size: 18px;
-  font-weight: 500;
-  min-width: 120px;
+  font-size: 17px;
+  font-weight: 600;
+  min-width: 130px;
   text-align: center;
+  color: var(--text-1);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.weekdays span {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-3);
+  font-weight: 500;
 }
 
 .date-grid {
@@ -286,23 +308,29 @@ onMounted(loadData)
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   cursor: pointer;
   position: relative;
+  transition: background 0.15s, color 0.15s;
 }
 
-.date-cell:hover { background: #f5f5f5; }
-.date-cell.today { background: #E8F5E9; }
-.date-cell.selected { background: #4CAF50; color: #fff; }
+.date-cell:hover { background: var(--fill); }
+.date-cell.today { background: var(--primary-50); }
+.date-cell.today .day-num { color: var(--primary-600); font-weight: 600; }
+.date-cell.selected {
+  background: var(--primary-gradient);
+  box-shadow: var(--shadow-primary);
+}
+.date-cell.selected .day-num { color: #fff; font-weight: 700; }
 .date-cell.selected .day-dot { background: #fff; }
 
-.day-num { font-size: 14px; }
+.day-num { font-size: 14px; color: var(--text-2); }
 .day-dot {
-  width: 4px;
-  height: 4px;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  background: #4CAF50;
-  margin-top: 2px;
+  background: var(--primary);
+  margin-top: 3px;
 }
 
 /* 统计行 */
@@ -314,23 +342,37 @@ onMounted(loadData)
 
 .stat-card {
   flex: 1;
-  background: #fff;
-  border-radius: 12px;
-  padding: 16px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 16px 10px;
   text-align: center;
+  box-shadow: var(--shadow-xs);
+  position: relative;
+  overflow: hidden;
 }
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary-gradient);
+}
+.stat-card:nth-child(2)::before { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+.stat-card:nth-child(3)::before { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
 
 .stat-value {
-  font-size: 24px;
-  font-weight: 600;
-  color: #333;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-1);
   display: block;
+  line-height: 1.2;
 }
-
 .stat-label {
   font-size: 12px;
-  color: #999;
-  margin-top: 4px;
+  color: var(--text-3);
+  margin-top: 5px;
   display: block;
 }
 
@@ -342,78 +384,82 @@ onMounted(loadData)
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  padding: 0 2px;
 }
-
-.section-title { font-size: 18px; font-weight: 500; }
-.section-count { font-size: 14px; color: #999; }
+.section-title { font-size: 16px; font-weight: 600; color: var(--text-1); }
+.section-count { font-size: 13px; color: var(--text-3); }
 
 .record-list {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-xs);
 }
 
 .record-item {
   display: flex;
   align-items: center;
-  padding: 16px;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--divider);
   cursor: pointer;
+  transition: background 0.15s;
 }
-
 .record-item:last-child { border-bottom: none; }
+.record-item:active { background: var(--bg-soft); }
 
 .record-meal {
-  font-size: 24px;
+  font-size: 22px;
   margin-right: 12px;
+  width: 40px;
+  text-align: center;
 }
 
-.record-content { flex: 1; }
-.record-name { font-size: 16px; color: #333; }
-.record-detail { font-size: 12px; color: #999; margin-top: 4px; }
+.record-content { flex: 1; min-width: 0; }
+.record-name { font-size: 15px; color: var(--text-1); font-weight: 500; }
+.record-detail { font-size: 12px; color: var(--text-3); margin-top: 4px; }
 
-.record-stats { text-align: right; }
+.record-stats { text-align: right; flex-shrink: 0; }
 .record-stats .calories {
-  font-size: 18px;
-  font-weight: 500;
-  color: #4CAF50;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--primary);
 }
-
 .record-stats .macros {
-  font-size: 12px;
-  color: #999;
+  font-size: 11px;
+  color: var(--text-3);
   margin-top: 4px;
 }
-
 .record-stats .macros span { margin-left: 8px; }
 
 /* 操作栏 */
 .action-bar {
   display: flex;
   justify-content: center;
-  padding: 16px;
+  padding: 8px 16px 4px;
 }
 
 .btn-delete {
-  padding: 12px 24px;
-  background: #fff;
-  border: 1px solid #f44336;
-  color: #f44336;
-  border-radius: 8px;
+  padding: 11px 24px;
+  background: var(--card);
+  border: 1.5px solid var(--danger);
+  color: var(--danger);
+  border-radius: 999px;
   font-size: 14px;
-  cursor: pointer;
+  font-weight: 500;
+  transition: transform 0.12s, background 0.15s;
 }
+.btn-delete:active { transform: scale(0.96); background: #fef2f2; }
 
 /* 状态 */
-.loading { text-align: center; padding: 40px; color: #999; }
+.loading { text-align: center; padding: 40px; color: var(--text-3); }
 
 .empty-state {
-  background: #fff;
-  border-radius: 12px;
-  padding: 40px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 44px 24px;
   text-align: center;
+  box-shadow: var(--shadow-xs);
 }
-
-.empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
-.empty-text { font-size: 16px; color: #666; }
+.empty-icon { font-size: 46px; display: block; margin-bottom: 12px; }
+.empty-text { font-size: 15px; color: var(--text-2); }
 </style>

@@ -1,28 +1,41 @@
 #!/bin/bash
 
 # ============================================
-#  Fitness OCR 自动化发布脚本
-#  本地打包 → 上传服务器 → 重启服务
+#  Fitness OCR 自动化发布脚本（Docker 版）
+#  本地打包 -> 上传 Windows/WSL2 服务器 -> Docker 部署
+#
+#  目标服务器: Windows 11 + WSL2 Ubuntu 22.04 + Docker
 #
 #  用法:
 #    ./deploy.sh              # 完整部署（前端+后端）
 #    ./deploy.sh frontend     # 仅部署前端
 #    ./deploy.sh backend      # 仅部署后端
 #    ./deploy.sh rollback     # 回滚到上一版本
+#    ./deploy.sh status       # 查看部署状态
 # ============================================
 
 set -e
 
 # ---- 配置区 ----
-REMOTE_HOST="111.228.49.250"
-REMOTE_PORT="10260"
-REMOTE_USER="raza"
-REMOTE_PASS='JinYanru(()!)('
-REMOTE_DIR="/home/raza/server/fitness"
+REMOTE_HOST="172.16.11.155"
+REMOTE_PORT="22"
+REMOTE_USER="pc-admin"
+SSH_KEY="$HOME/.ssh/win_admin"
+WSL_DISTRO="Ubuntu-22.04"
+
+# 远程路径（WSL2 内）
+REMOTE_DIR="/opt/services/fitness"
+NGINX_HTML_DIR="/opt/services/nginx/html"
+NGINX_CONF_DIR="/opt/services/nginx/conf.d"
 JAR_NAME="fitness-ocr-1.0.0.jar"
 
-# 将密码导出为环境变量，避免特殊字符在命令行参数中被 shell 错误解析
-export SSHPASS="${REMOTE_PASS}"
+# MySQL 配置
+MYSQL_CONTAINER="mysql"
+MYSQL_ROOT_PASSWORD="AJmGYMpJuptTIOsZAP5B"
+MYSQL_DATABASE="fitness_ocr"
+
+# Docker 容器名
+BACKEND_CONTAINER="fitness-backend"
 
 # 颜色输出
 RED='\033[0;31m'
@@ -39,79 +52,80 @@ log_step()  { echo -e "\n${BLUE}>>> $1${NC}"; }
 # 项目根目录
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-
-# 时间戳（用于备份）
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
-# ---- 函数区 ----
+# ---- 辅助函数 ----
 
-# 检查本地环境
+# 在远程 WSL2 中执行命令（base64 编码避免引号问题）
+wsl_exec() {
+    local cmd="$1"
+    local encoded
+    encoded=$(printf '%s' "$cmd" | base64 | tr -d '\n')
+    ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -p "$REMOTE_PORT" \
+        "$REMOTE_USER@$REMOTE_HOST" "wsl -d $WSL_DISTRO -- bash -lc 'echo $encoded | base64 -d | bash'"
+}
+
+# 上传文件到远程 WSL2（通过 SSH 管道）
+upload_file() {
+    local local_file="$1"
+    local remote_path="$2"
+    cat "$local_file" | ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -p "$REMOTE_PORT" \
+        "$REMOTE_USER@$REMOTE_HOST" "wsl -d $WSL_DISTRO -- bash -lc 'cat > \"${remote_path}\"'"
+}
+
+# ---- 检查函数 ----
+
 check_local_env() {
     log_step "检查本地环境"
     local missing=0
 
-    if ! command -v java &> /dev/null; then
-        log_error "Java 未安装"
-        missing=1
-    else
-        log_info "Java: $(java -version 2>&1 | head -1)"
-    fi
-
-    if ! command -v mvn &> /dev/null; then
-        log_error "Maven 未安装"
-        missing=1
-    else
-        log_info "Maven: $(mvn -version | head -1)"
-    fi
-
-    if ! command -v node &> /dev/null; then
-        log_error "Node.js 未安装"
-        missing=1
-    else
-        log_info "Node: $(node -v)"
-    fi
-
-    if ! command -v npm &> /dev/null; then
-        log_error "npm 未安装"
-        missing=1
-    else
-        log_info "npm: $(npm -v)"
-    fi
+    for tool in java mvn node npm; do
+        if ! command -v "$tool" &> /dev/null; then
+            log_error "$(echo "$tool" | tr 'a-z' 'A-Z') 未安装"
+            missing=1
+        fi
+    done
 
     if [ $missing -eq 1 ]; then
         log_error "缺少必要工具，请先安装"
         exit 1
     fi
+
+    log_info "Java: $(java -version 2>&1 | head -1)"
+    log_info "Maven: $(mvn -version 2>&1 | head -1)"
+    log_info "Node: $(node -v)"
+    log_info "npm: $(npm -v)"
 }
 
-# 检查远程服务器连接
 check_remote() {
     log_step "检查远程服务器连接"
-    if sshpass -e ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "echo '连接成功'" &> /dev/null; then
-        log_info "服务器 ${REMOTE_HOST} 连接正常"
+    if [ ! -f "$SSH_KEY" ]; then
+        log_error "SSH 密钥不存在: $SSH_KEY"
+        exit 1
+    fi
+    if wsl_exec "echo 'connected'" &> /dev/null; then
+        log_info "服务器 ${REMOTE_HOST} (WSL2) 连接正常"
     else
         log_error "无法连接服务器 ${REMOTE_HOST}"
-        log_warn "请检查: 1) 服务器是否可达  2) SSH 密钥或密码是否正确  3) 安装 sshpass 以使用密码认证"
+        log_warn "请检查: 1) 服务器是否可达  2) SSH 密钥 $SSH_KEY 是否正确  3) WSL2 是否运行"
         exit 1
     fi
 }
 
-# 打包前端
+# ---- 构建函数 ----
+
 build_frontend() {
     log_step "打包前端"
     cd "$PROJECT_DIR/fitness-frontend"
 
-    # 安装依赖
     if [ ! -d "node_modules" ] || [ package.json -nt node_modules/.package-lock.json ]; then
         log_info "安装前端依赖..."
         npm install
     fi
 
-    # 构建
     log_info "构建前端 (vite build)..."
     npm run build:h5
 
-    # 检查构建结果
     if [ ! -f "dist/index.html" ]; then
         log_error "前端构建失败: dist/index.html 不存在"
         exit 1
@@ -122,7 +136,6 @@ build_frontend() {
     cd "$PROJECT_DIR"
 }
 
-# 打包后端
 build_backend() {
     log_step "打包后端"
     cd "$PROJECT_DIR/fitness-backend"
@@ -130,7 +143,6 @@ build_backend() {
     log_info "构建后端 (mvn package)..."
     mvn package -Dmaven.test.skip=true -q
 
-    # 检查构建结果
     if [ ! -f "target/${JAR_NAME}" ]; then
         log_error "后端构建失败: target/${JAR_NAME} 不存在"
         exit 1
@@ -141,168 +153,141 @@ build_backend() {
     cd "$PROJECT_DIR"
 }
 
-# 备份远程文件
+# ---- 部署函数 ----
+
+init_remote() {
+    log_step "初始化远程目录"
+    wsl_exec "mkdir -p ${REMOTE_DIR}/backup ${REMOTE_DIR}/logs"
+    log_info "远程目录就绪 ✓"
+}
+
+init_mysql() {
+    log_step "初始化 MySQL 数据库"
+    wsl_exec "docker exec ${MYSQL_CONTAINER} mysql -uroot -p${MYSQL_ROOT_PASSWORD} -e 'CREATE DATABASE IF NOT EXISTS ${MYSQL_DATABASE} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' 2>&1 | grep -v 'Warning' || true"
+    log_info "数据库 ${MYSQL_DATABASE} 就绪 ✓"
+}
+
 backup_remote() {
     log_step "备份远程文件"
-    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
+    wsl_exec "
         cd ${REMOTE_DIR}
-        # 备份后端 jar
-        if [ -f backend/${JAR_NAME} ]; then
-            cp backend/${JAR_NAME} backup/${JAR_NAME}.${TIMESTAMP}
-            echo '已备份: backend/${JAR_NAME}'
+        if [ -f ${JAR_NAME} ]; then
+            cp ${JAR_NAME} backup/${JAR_NAME}.${TIMESTAMP}
+            echo '已备份: ${JAR_NAME}'
         fi
-        # 备份前端 dist
-        if [ -d dist ] && [ \$(ls -A dist 2>/dev/null) ]; then
-            tar czf backup/dist_${TIMESTAMP}.tar.gz -C dist .
+        if [ -d '${NGINX_HTML_DIR}' ] && [ \$(ls -A '${NGINX_HTML_DIR}' 2>/dev/null) ]; then
+            tar czf backup/dist_${TIMESTAMP}.tar.gz -C '${NGINX_HTML_DIR}' .
             echo '已备份: dist/'
         fi
-        # 清理旧备份（保留最近 5 个）
         cd backup
-        ls -t *.jar.* 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null
+        ls -t ${JAR_NAME}.* 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null
         ls -t dist_*.tar.gz 2>/dev/null | tail -n +6 | xargs rm -f 2>/dev/null
         echo '旧备份已清理'
     "
     log_info "备份完成 ✓"
 }
 
-# 上传前端
 upload_frontend() {
     log_step "上传前端文件"
-    # 确保目录存在
-    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "mkdir -p ${REMOTE_DIR}/dist"
-    # 清空远程 dist
-    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "rm -rf ${REMOTE_DIR}/dist/* || true"
-    # 上传整个目录
-    sshpass -e scp -o StrictHostKeyChecking=no -P ${REMOTE_PORT} -r "$PROJECT_DIR/fitness-frontend/dist" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/"
-    log_info "前端文件上传完成 ✓"
+    COPYFILE_DISABLE=1 tar czf - -C "$PROJECT_DIR/fitness-frontend/dist" . | \
+        ssh -i "$SSH_KEY" -o StrictHostKeyChecking=no -p "$REMOTE_PORT" \
+        "$REMOTE_USER@$REMOTE_HOST" "wsl -d $WSL_DISTRO -- bash -lc 'mkdir -p ${NGINX_HTML_DIR} && find ${NGINX_HTML_DIR} -mindepth 1 -delete && tar xzf - -C ${NGINX_HTML_DIR}'"
+    log_info "前端上传完成 ✓"
 }
 
-# 上传后端
 upload_backend() {
-    log_step "上传后端 jar"
-    sshpass -e scp -o StrictHostKeyChecking=no -P ${REMOTE_PORT} "$PROJECT_DIR/fitness-backend/target/${JAR_NAME}" "${REMOTE_USER}@${REMOTE_HOST}:${REMOTE_DIR}/backend/${JAR_NAME}"
-    log_info "后端 jar 上传完成 ✓"
+    log_step "上传后端文件"
+    log_info "上传 JAR..."
+    upload_file "$PROJECT_DIR/fitness-backend/target/${JAR_NAME}" "${REMOTE_DIR}/${JAR_NAME}"
+    log_info "上传 Dockerfile..."
+    upload_file "$SCRIPT_DIR/Dockerfile" "${REMOTE_DIR}/Dockerfile"
+    log_info "上传 docker-compose.yml..."
+    upload_file "$SCRIPT_DIR/docker-compose.yml" "${REMOTE_DIR}/docker-compose.yml"
+    log_info "后端文件上传完成 ✓"
 }
 
-# 重启后端服务
 restart_backend() {
-    log_step "重启后端服务"
-    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
-        # 停止旧进程
-        PID=\$(lsof -ti:8080 2>/dev/null || true)
-        if [ -n \"\$PID\" ]; then
-            echo '停止旧进程 (PID: '\$PID')...'
-            kill \$PID 2>/dev/null
-            sleep 3
-            # 强制杀死
-            PID2=\$(lsof -ti:8080 2>/dev/null || true)
-            if [ -n \"\$PID2\" ]; then
-                kill -9 \$PID2 2>/dev/null
-                sleep 1
-            fi
+    log_step "构建并重启后端容器"
+    wsl_exec "cd ${REMOTE_DIR} && docker compose down 2>/dev/null; docker compose build 2>&1 && docker compose up -d 2>&1"
+
+    log_info "等待后端启动..."
+    for i in $(seq 1 30); do
+        if wsl_exec "curl -s -o /dev/null http://127.0.0.1:8080/api/health 2>/dev/null || curl -s -o /dev/null http://127.0.0.1:8080/ 2>/dev/null" 2>/dev/null; then
+            log_info "后端服务启动成功 ✓"
+            break
         fi
-
-        # 启动新进程
-        echo '启动后端服务...'
-        cd ${REMOTE_DIR}/backend
-        nohup java -jar ${JAR_NAME} \
-            > ${REMOTE_DIR}/logs/backend_${TIMESTAMP}.log 2>&1 &
-
-        NEW_PID=\$!
-        echo '后端进程 PID: '\$NEW_PID
-
-        # 等待启动
-        echo '等待服务启动...'
-        for i in \$(seq 1 30); do
-            if curl -s http://127.0.0.1:8080/api/health &> /dev/null || curl -s -o /dev/null -w '' http://127.0.0.1:8080/ &> /dev/null; then
-                echo '✓ 后端服务启动成功'
-                break
-            fi
-            if [ \$i -eq 30 ]; then
-                echo '⚠ 等待超时，请手动检查日志: ${REMOTE_DIR}/logs/backend_${TIMESTAMP}.log'
-            fi
-            sleep 2
-        done
-
-        # 清理旧日志（保留最近 10 个）
-        cd ${REMOTE_DIR}/logs
-        ls -t backend_*.log 2>/dev/null | tail -n +11 | xargs rm -f 2>/dev/null
-    "
-    log_info "后端服务重启完成 ✓"
+        if [ "$i" -eq 30 ]; then
+            log_warn "等待超时，请检查: docker logs ${BACKEND_CONTAINER}"
+        fi
+        sleep 2
+    done
 }
 
-# 重载 nginx
 reload_nginx() {
-    log_step "重载 nginx"
-    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
-        nginx -t 2>&1 && (systemctl reload nginx 2>/dev/null || nginx -s reload 2>/dev/null)
-        echo '✓ nginx 重载完成'
-    "
+    log_step "更新 nginx 配置并重载"
+    upload_file "$SCRIPT_DIR/nginx/fitness-docker.conf" "${NGINX_CONF_DIR}/default.conf"
+    wsl_exec "docker exec nginx nginx -t 2>&1 && docker exec nginx nginx -s reload 2>&1"
     log_info "nginx 重载完成 ✓"
 }
 
-# 回滚
+# ---- 回滚 ----
+
 rollback() {
     log_step "回滚到上一版本"
-    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
+    wsl_exec "
         cd ${REMOTE_DIR}
 
-        # 查找最新备份
         LATEST_JAR_BACKUP=\$(ls -t backup/${JAR_NAME}.* 2>/dev/null | head -1)
         LATEST_DIST_BACKUP=\$(ls -t backup/dist_*.tar.gz 2>/dev/null | head -1)
 
         if [ -z \"\$LATEST_JAR_BACKUP\" ] && [ -z \"\$LATEST_DIST_BACKUP\" ]; then
-            echo '❌ 没有可用的备份'
+            echo '没有可用的备份'
             exit 1
         fi
 
-        # 回滚后端
         if [ -n \"\$LATEST_JAR_BACKUP\" ]; then
-            echo '回滚后端: '\$LATEST_JAR_BACKUP
-            cp \$LATEST_JAR_BACKUP backend/${JAR_NAME}
+            echo \"回滚后端: \$LATEST_JAR_BACKUP\"
+            cp \$LATEST_JAR_BACKUP ${JAR_NAME}
         fi
 
-        # 回滚前端
         if [ -n \"\$LATEST_DIST_BACKUP\" ]; then
-            echo '回滚前端: '\$LATEST_DIST_BACKUP
-            rm -rf dist/*
-            tar xzf \$LATEST_DIST_BACKUP -C dist/
+            echo \"回滚前端: \$LATEST_DIST_BACKUP\"
+            find '${NGINX_HTML_DIR}' -mindepth 1 -delete 2>/dev/null
+            tar xzf \$LATEST_DIST_BACKUP -C '${NGINX_HTML_DIR}'
         fi
 
-        echo '✓ 回滚完成'
+        echo '回滚文件已恢复'
     "
 
-    # 重启后端
-    restart_backend
+    if wsl_exec "test -f ${REMOTE_DIR}/${JAR_NAME}" 2>/dev/null; then
+        restart_backend
+    fi
     reload_nginx
-
     log_info "回滚完成 ✓"
 }
 
-# 显示部署状态
+# ---- 状态 ----
+
 show_status() {
     log_step "部署状态"
-    sshpass -e ssh -o StrictHostKeyChecking=no -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} "
-        echo '--- 后端服务 ---'
-        PID=\$(lsof -ti:8080 2>/dev/null || echo '未运行')
-        echo \"PID: \$PID\"
-        if [ \"\$PID\" != '未运行' ]; then
-            echo \"内存: \$(ps -o rss= -p \$PID 2>/dev/null | awk '{printf \"%.1f MB\", \$1/1024}')\"
-        fi
-
+    wsl_exec "
+        echo '--- 后端容器 ---'
+        docker ps --filter name=${BACKEND_CONTAINER} --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' 2>/dev/null || echo '未运行'
+        echo ''
+        echo '--- 容器日志（最近10行）---'
+        docker logs --tail 10 ${BACKEND_CONTAINER} 2>&1 || echo '无日志'
         echo ''
         echo '--- 磁盘使用 ---'
-        du -sh ${REMOTE_DIR}/dist 2>/dev/null || echo 'dist: 不存在'
-        du -sh ${REMOTE_DIR}/backend 2>/dev/null || echo 'backend: 不存在'
-        du -sh ${REMOTE_DIR}/backup 2>/dev/null || echo 'backup: 不存在'
-
+        du -sh ${REMOTE_DIR} 2>/dev/null || echo 'fitness: 不存在'
+        du -sh '${NGINX_HTML_DIR}' 2>/dev/null || echo 'nginx html: 不存在'
         echo ''
         echo '--- nginx ---'
-        nginx -t 2>&1 | tail -1
-
+        docker exec nginx nginx -t 2>&1 | tail -1
         echo ''
-        echo '--- 最近日志 ---'
-        tail -5 ${REMOTE_DIR}/logs/backend_*.log 2>/dev/null | tail -5 || echo '无日志'
+        echo '--- 健康检查 ---'
+        curl -s http://127.0.0.1/health 2>&1 || echo 'nginx: 未响应'
+        echo ''
+        curl -s -o /dev/null -w 'backend HTTP %{http_code}' http://127.0.0.1:8080/api/health 2>&1 || echo 'backend: 未响应'
     "
 }
 
@@ -311,8 +296,8 @@ show_status() {
 DEPLOY_TARGET="${1:-all}"
 
 echo "=========================================="
-echo "  Fitness OCR 自动化发布"
-echo "  目标: ${REMOTE_USER}@${REMOTE_HOST}"
+echo "  Fitness OCR 自动化发布（Docker 版）"
+echo "  目标: ${REMOTE_USER}@${REMOTE_HOST} (WSL2)"
 echo "  模式: ${DEPLOY_TARGET}"
 echo "  时间: $(date '+%Y-%m-%d %H:%M:%S')"
 echo "=========================================="
@@ -330,6 +315,8 @@ case "$DEPLOY_TARGET" in
         check_local_env
         check_remote
         build_backend
+        init_remote
+        init_mysql
         backup_remote
         upload_backend
         restart_backend
@@ -339,6 +326,8 @@ case "$DEPLOY_TARGET" in
         check_remote
         build_frontend
         build_backend
+        init_remote
+        init_mysql
         backup_remote
         upload_frontend
         upload_backend
@@ -373,6 +362,6 @@ echo ""
 echo "  访问地址: http://${REMOTE_HOST}"
 echo "  后端 API: http://${REMOTE_HOST}/api"
 echo ""
-echo "  查看日志: ssh -p ${REMOTE_PORT} ${REMOTE_USER}@${REMOTE_HOST} 'tail -f ${REMOTE_DIR}/logs/backend_*.log'"
+echo "  查看日志: ssh -i ${SSH_KEY} ${REMOTE_USER}@${REMOTE_HOST} 'wsl -d ${WSL_DISTRO} -- docker logs -f ${BACKEND_CONTAINER}'"
 echo "  查看状态: $0 status"
 echo ""

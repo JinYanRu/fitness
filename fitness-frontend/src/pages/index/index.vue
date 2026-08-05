@@ -35,7 +35,7 @@
         <span class="calorie-date">{{ selectedDateShort }}</span>
       </div>
       <div class="calorie-main">
-        <div class="calorie-circle">
+        <div class="calorie-circle" :style="{ '--p': Math.min(calorieProgress, 100) }" :class="{ over: calorieProgress > 100 }">
           <div class="calorie-value">{{ dayStats.totalCalories || 0 }}</div>
           <div class="calorie-unit">kcal</div>
         </div>
@@ -544,50 +544,50 @@ onMounted(() => {
 
 <style scoped>
 .index-page {
-  padding: 16px;
-  background: #f5f5f5;
+  padding: calc(var(--safe-top) + 14px) 16px calc(var(--tab-h) + var(--safe-bottom) + 28px);
+  background: linear-gradient(180deg, #e7f1e9 0%, var(--bg) 24%);
   min-height: 100vh;
-  padding-bottom: 80px;
 }
 
+/* 问候 */
 .user-info {
-  margin-bottom: 16px;
+  margin: 2px 2px 14px;
 }
-
 .greeting {
-  font-size: 20px;
-  font-weight: 500;
-  color: #333;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text-1);
+  letter-spacing: 0.3px;
 }
 
 /* 日期选择条 */
 .date-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: #fff;
-  border-radius: 12px;
-  padding: 8px 12px;
-  margin-bottom: 12px;
+  gap: 10px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 9px 12px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-sm);
 }
 
 .date-arrow {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   flex-shrink: 0;
-  border: none;
-  background: #f5f5f5;
+  background: var(--fill);
   border-radius: 50%;
-  font-size: 18px;
-  color: #333;
-  cursor: pointer;
+  font-size: 20px;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+  transition: background 0.2s, transform 0.12s;
 }
-
-.date-arrow:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
+.date-arrow:active { transform: scale(0.88); background: var(--primary-100); }
+.date-arrow:disabled { opacity: 0.25; cursor: not-allowed; }
 
 .date-pickable {
   position: relative;
@@ -605,23 +605,9 @@ onMounted(() => {
   flex-direction: column;
   align-items: center;
 }
-
-.date-main {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-}
-
-.date-sub {
-  font-size: 12px;
-  color: #999;
-  margin-top: 2px;
-}
-
-.date-cal {
-  font-size: 16px;
-  opacity: 0.7;
-}
+.date-main { font-size: 16px; font-weight: 600; color: var(--text-1); }
+.date-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.date-cal { font-size: 16px; opacity: 0.6; }
 
 .date-native-input {
   position: absolute;
@@ -637,147 +623,181 @@ onMounted(() => {
 .back-today-row {
   display: flex;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
 }
-
 .back-today-btn {
-  border: 1px solid #4CAF50;
-  background: #fff;
-  color: #4CAF50;
-  border-radius: 16px;
-  padding: 4px 16px;
+  background: var(--card);
+  color: var(--primary);
+  border-radius: 999px;
+  padding: 5px 18px;
   font-size: 13px;
-  cursor: pointer;
+  font-weight: 500;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.12s;
 }
+.back-today-btn:active { transform: scale(0.95); }
 
 /* 热量卡片 */
 .calorie-card {
-  background: linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%);
-  border-radius: 16px;
-  padding: 20px;
+  position: relative;
+  background: var(--primary-gradient);
+  border-radius: var(--radius-xl);
+  padding: 22px;
   color: #fff;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-primary);
+  overflow: hidden;
+}
+.calorie-card::before {
+  content: '';
+  position: absolute;
+  top: -44px;
+  right: -34px;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.13);
+}
+.calorie-card::after {
+  content: '';
+  position: absolute;
+  bottom: -54px;
+  left: -24px;
+  width: 130px;
+  height: 130px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .calorie-header {
+  position: relative;
+  z-index: 1;
   display: flex;
   justify-content: space-between;
-  margin-bottom: 16px;
+  align-items: center;
+  margin-bottom: 18px;
 }
-
-.calorie-title { font-size: 16px; }
-.calorie-date { font-size: 14px; opacity: 0.8; }
+.calorie-title { font-size: 15px; font-weight: 600; }
+.calorie-date { font-size: 13px; opacity: 0.82; }
 
 .calorie-main {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 24px;
 }
 
 .calorie-circle {
-  width: 100px;
-  height: 100px;
+  width: 108px;
+  height: 108px;
   border-radius: 50%;
-  background: rgba(255,255,255,0.2);
+  flex-shrink: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  position: relative;
+  background: conic-gradient(rgba(255, 255, 255, 0.95) calc(var(--p, 0) * 1%), rgba(255, 255, 255, 0.18) 0);
+  transition: background 0.4s ease;
 }
+.calorie-circle.over {
+  background: conic-gradient(#ffd54f calc(var(--p, 0) * 1%), rgba(255, 255, 255, 0.18) 0);
+}
+.calorie-circle::before {
+  content: '';
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.14);
+}
+.calorie-value { position: relative; z-index: 1; font-size: 28px; font-weight: 800; line-height: 1; }
+.calorie-unit { position: relative; z-index: 1; font-size: 12px; opacity: 0.85; margin-top: 3px; }
 
-.calorie-value { font-size: 28px; font-weight: bold; }
-.calorie-unit { font-size: 12px; opacity: 0.8; }
-
-.calorie-target { flex: 1; }
-.target-label { font-size: 12px; opacity: 0.8; display: block; }
-.target-value { font-size: 14px; display: block; margin: 4px 0; }
+.calorie-target { flex: 1; min-width: 0; }
+.target-label { font-size: 12px; opacity: 0.82; display: block; }
+.target-value { font-size: 15px; font-weight: 600; display: block; margin: 4px 0 2px; }
 
 .progress-bar {
-  height: 6px;
-  background: rgba(255,255,255,0.2);
-  border-radius: 3px;
+  height: 7px;
+  background: rgba(255, 255, 255, 0.22);
+  border-radius: 7px;
   overflow: hidden;
   margin: 8px 0;
 }
-
 .progress-fill {
   height: 100%;
   background: #fff;
-  border-radius: 3px;
-  transition: width 0.3s;
+  border-radius: 7px;
+  transition: width 0.4s ease;
 }
-
-.progress-fill.warning { background: #ff9800; }
-.progress-text { font-size: 12px; }
+.progress-fill.warning { background: #ffd54f; }
+.progress-text { font-size: 12px; opacity: 0.9; }
 
 /* 营养素统计 */
 .nutrition-stats {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
   padding: 16px;
-  margin-bottom: 16px;
+  margin-bottom: 14px;
+  display: flex;
+  gap: 10px;
+  box-shadow: var(--shadow-xs);
 }
-
-.nutrient-item { margin-bottom: 12px; }
-.nutrient-item:last-child { margin-bottom: 0; }
-
+.nutrient-item { flex: 1; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .nutrient-header {
   display: flex;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 6px;
 }
-
-.nutrient-name { font-size: 14px; color: #666; }
-.nutrient-value { font-size: 14px; color: #333; font-weight: 500; }
-
-.nutrient-bar {
+.nutrient-name {
+  font-size: 12px;
+  color: var(--text-3);
+  display: flex;
+  align-items: center;
+}
+.nutrient-name::before {
+  content: '';
+  width: 8px;
   height: 8px;
-  background: #f0f0f0;
-  border-radius: 4px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.nutrient-item:nth-child(1) .nutrient-name::before { background: var(--protein); }
+.nutrient-item:nth-child(2) .nutrient-name::before { background: var(--fat); }
+.nutrient-item:nth-child(3) .nutrient-name::before { background: var(--carbs); }
+.nutrient-value { font-size: 16px; font-weight: 700; color: var(--text-1); }
+.nutrient-bar {
+  height: 6px;
+  background: var(--fill);
+  border-radius: 6px;
   overflow: hidden;
 }
-
-.nutrient-fill {
-  height: 100%;
-  border-radius: 4px;
-  transition: width 0.3s;
-}
-
-.nutrient-fill.protein { background: #2196F3; }
-.nutrient-fill.fat { background: #FF9800; }
-.nutrient-carbs { height: 100%; background: #4CAF50; border-radius: 4px; }
+.nutrient-fill { height: 100%; border-radius: 6px; transition: width 0.4s ease; }
+.nutrient-fill.protein { background: var(--protein); }
+.nutrient-fill.fat { background: var(--fat); }
+.nutrient-carbs { height: 100%; background: var(--carbs); border-radius: 6px; transition: width 0.4s ease; }
 
 /* AI 分析按钮 */
 .ai-analysis-btn {
   width: 100%;
-  border: none;
-  border-radius: 12px;
-  padding: 16px;
-  margin-bottom: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: var(--radius-lg);
+  padding: 15px;
+  margin-bottom: 14px;
+  background: var(--ai-gradient);
   color: #fff;
   font-size: 15px;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  cursor: pointer;
-  transition: transform 0.1s;
+  box-shadow: 0 10px 24px rgba(99, 102, 241, 0.28);
+  transition: transform 0.12s, box-shadow 0.2s;
 }
-
-.ai-analysis-btn:active {
-  transform: scale(0.98);
-}
-
-.ai-analysis-btn:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-.ai-icon {
-  font-size: 18px;
-}
+.ai-analysis-btn:active { transform: scale(0.98); }
+.ai-analysis-btn:disabled { opacity: 0.7; cursor: not-allowed; }
+.ai-icon { font-size: 18px; }
 
 /* 快捷操作 */
 .action-buttons {
@@ -785,84 +805,74 @@ onMounted(() => {
   gap: 12px;
   margin-bottom: 16px;
 }
-
 .action-btn {
   flex: 1;
-  background: #fff;
-  border-radius: 12px;
-  padding: 20px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
-  cursor: pointer;
-  transition: transform 0.1s;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.12s, box-shadow 0.2s;
 }
-
-.action-btn:active { transform: scale(0.98); }
-.action-btn.primary { background: #4CAF50; color: #fff; }
-.action-icon { font-size: 28px; }
-.action-text { font-size: 14px; }
+.action-btn:active { transform: translateY(1px) scale(0.98); }
+.action-btn.primary {
+  background: var(--primary-gradient);
+  color: #fff;
+  box-shadow: var(--shadow-primary);
+}
+.action-icon { font-size: 26px; }
+.action-text { font-size: 14px; font-weight: 500; }
 
 /* 记录列表 */
 .section { margin-bottom: 16px; }
-
 .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+  padding: 0 2px;
 }
-
-.section-title { font-size: 16px; font-weight: 500; color: #333; }
-.section-more { font-size: 14px; color: #4CAF50; cursor: pointer; }
+.section-title { font-size: 16px; font-weight: 600; color: var(--text-1); }
+.section-more { font-size: 13px; color: var(--primary); font-weight: 500; cursor: pointer; }
 .section-actions { display: flex; align-items: center; gap: 12px; }
 .import-btn {
   display: inline-flex;
   align-items: center;
   padding: 5px 12px;
   font-size: 13px;
-  color: #ff9800;
-  background: #fff3e0;
-  border: 1px solid #ffd9a8;
-  border-radius: 16px;
-  cursor: pointer;
+  color: var(--accent);
+  background: #fff6e6;
+  border: 1px solid #ffe2ad;
+  border-radius: 999px;
   line-height: 1.2;
+  transition: transform 0.12s;
 }
 .import-btn:active { transform: scale(0.96); }
 
 .record-list {
-  background: #fff;
-  border-radius: 12px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
   overflow: hidden;
+  box-shadow: var(--shadow-xs);
 }
-
-.record-swipe-wrapper {
-  position: relative;
-  overflow: hidden;
-}
-
+.record-swipe-wrapper { position: relative; overflow: hidden; }
 .record-swipe-content {
   position: relative;
   z-index: 1;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px;
-  background: #fff;
-  border-bottom: 1px solid #f0f0f0;
+  padding: 14px 16px;
+  background: var(--card);
+  border-bottom: 1px solid var(--divider);
   cursor: pointer;
   transition: transform 0.25s ease;
 }
-
-.record-swipe-content.swiping {
-  transition: none; /* 跟手拖拽时去掉过渡，保证流畅 */
-}
-
-.record-swipe-wrapper:last-child .record-swipe-content {
-  border-bottom: none;
-}
-
+.record-swipe-content.swiping { transition: none; }
+.record-swipe-wrapper:last-child .record-swipe-content { border-bottom: none; }
 .record-delete-btn {
   position: absolute;
   top: 0;
@@ -870,77 +880,73 @@ onMounted(() => {
   bottom: 0;
   width: 80px;
   border: none;
-  background: #ff4d4f;
+  background: linear-gradient(135deg, #ff5b5b, #ef4444);
   color: #fff;
   font-size: 15px;
   cursor: pointer;
 }
 
-.record-info { flex: 1; }
-.record-meal { font-size: 12px; color: #4CAF50; display: block; }
-.record-name { font-size: 16px; color: #333; display: block; margin: 4px 0; }
-.record-amount { font-size: 12px; color: #999; }
-.amount-grams { font-size: 11px; color: #bbb; }
-
-.record-calories {
-  font-size: 16px;
+.record-info { flex: 1; display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.record-meal {
+  font-size: 11px;
+  color: var(--primary-600);
+  background: var(--primary-50);
+  padding: 2px 8px;
+  border-radius: 6px;
+  align-self: flex-start;
   font-weight: 500;
-  color: #4CAF50;
 }
+.record-name { font-size: 15px; color: var(--text-1); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.record-amount { font-size: 12px; color: var(--text-3); }
+.amount-grams { font-size: 11px; color: var(--text-4); }
 
-.record-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
+.record-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.record-calories { font-size: 16px; font-weight: 700; color: var(--primary); }
 
-/* 未吃（导入待确认）状态：背景须保持不透明，否则会透出下方的删除按钮 */
-.record-swipe-content.uneaten {
-  background: #fafafa;
-}
-.record-swipe-content.uneaten .record-name {
-  color: #999;
-}
-.record-swipe-content.uneaten .record-calories {
-  color: #c4c4c4;
-}
+.record-swipe-content.uneaten { background: var(--bg-soft); }
+.record-swipe-content.uneaten .record-name { color: var(--text-3); }
+.record-swipe-content.uneaten .record-calories { color: var(--text-4); }
 
 .eaten-tag {
   display: inline-block;
   margin-left: 6px;
   padding: 1px 6px;
   font-size: 11px;
-  color: #ff9800;
-  background: #fff3e0;
+  color: var(--accent);
+  background: #fff6e6;
   border-radius: 8px;
   vertical-align: middle;
 }
 
 .eaten-check {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
   padding: 0;
   border-radius: 50%;
-  border: 1.5px solid #4CAF50;
-  background: #fff;
-  color: #4CAF50;
+  border: 1.5px solid var(--primary);
+  background: var(--card);
+  color: var(--primary);
   font-size: 16px;
   line-height: 1;
-  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s, background 0.15s;
 }
+.eaten-check:active { transform: scale(0.88); background: var(--primary-100); }
 
 /* 空状态 */
 .empty-state {
-  background: #fff;
-  border-radius: 12px;
-  padding: 40px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 44px 24px;
   text-align: center;
+  box-shadow: var(--shadow-xs);
 }
+.empty-icon { font-size: 46px; display: block; margin-bottom: 12px; }
+.empty-text { font-size: 15px; color: var(--text-2); display: block; }
+.empty-tip { font-size: 13px; color: var(--text-3); display: block; margin-top: 6px; }
 
-.empty-icon { font-size: 48px; display: block; margin-bottom: 12px; }
-.empty-text { font-size: 16px; color: #666; display: block; }
-.empty-tip { font-size: 14px; color: #999; display: block; margin-top: 8px; }
-
-.loading { text-align: center; padding: 40px; color: #999; }
+.loading { text-align: center; padding: 40px; color: var(--text-3); }
 </style>

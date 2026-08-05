@@ -310,119 +310,59 @@ watch(formData, () => {
 </script>
 
 <style scoped>
-.nutrition-form {
-  padding: 0;
-}
-
+.nutrition-form { padding: 0; }
 .form-section {
-  background-color: #fff;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 15px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-xs);
 }
-
-.section-title {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-  margin-bottom: 15px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.form-item {
-  margin-bottom: 15px;
-}
-
-.form-item:last-child {
-  margin-bottom: 0;
-}
-
-.form-label {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 8px;
-  display: block;
-}
-
+.section-title { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 14px; }
+.section-header { display: flex; justify-content: space-between; align-items: center; }
+.form-item { margin-bottom: 14px; }
+.form-item:last-child { margin-bottom: 0; }
+.form-label { font-size: 13px; color: var(--text-2); margin-bottom: 8px; display: block; font-weight: 500; }
 .form-input {
   width: 100%;
   height: 44px;
-  background-color: #f8f8f8;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  background: var(--bg-soft);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 0 15px;
   font-size: 14px;
-  transition: all 0.2s;
-}
-
-.form-input:focus {
-  border-color: #4CAF50;
-  background-color: #fff;
+  color: var(--text-1);
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-
+.form-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px var(--primary-100); }
 .form-select {
   width: 100%;
   height: 44px;
-  background-color: #f8f8f8;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  background: var(--bg-soft);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 0 15px;
   font-size: 14px;
+  color: var(--text-1);
   cursor: pointer;
 }
-
-.number-input {
-  text-align: right;
-}
-
-.input-group {
-  display: flex;
-  gap: 10px;
-}
-
-.input-group .form-input {
-  flex: 1;
-}
-
+.number-input { text-align: right; }
+.input-group { display: flex; gap: 10px; }
+.input-group .form-input { flex: 1; }
 .unit-select {
-  width: 80px;
+  width: 84px;
   height: 44px;
-  background-color: #f0f0f0;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
+  background: var(--fill);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
   padding: 0 10px;
   font-size: 14px;
+  color: var(--text-1);
   cursor: pointer;
 }
-
-.raw-text-section {
-  background-color: #f5f5f5;
-}
-
-.toggle-btn {
-  font-size: 14px;
-  color: #4CAF50;
-  cursor: pointer;
-}
-
-.raw-text-content {
-  margin-top: 10px;
-  padding: 15px;
-  background-color: #fff;
-  border-radius: 8px;
-}
-
-.raw-text {
-  font-size: 12px;
-  color: #999;
-  line-height: 1.6;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
+.raw-text-section { background: var(--fill); }
+.toggle-btn { font-size: 14px; color: var(--primary); cursor: pointer; font-weight: 500; }
+.raw-text-content { margin-top: 10px; padding: 14px; background: var(--card); border-radius: var(--radius-sm); }
+.raw-text { font-size: 12px; color: var(--text-3); line-height: 1.6; white-space: pre-wrap; word-break: break-all; }
 </style>

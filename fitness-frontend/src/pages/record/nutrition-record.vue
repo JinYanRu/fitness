@@ -416,74 +416,59 @@ onMounted(() => {
 
 <style scoped>
 .nutrition-record-page {
-  padding: 16px;
-  background: #f5f5f5;
+  padding: calc(var(--safe-top) + 14px) 16px calc(var(--safe-bottom) + 24px);
+  background: linear-gradient(180deg, #e7f1e9 0%, var(--bg) 24%);
   min-height: 100vh;
-  padding-bottom: 16px;
 }
 
 .page-header {
   display: flex;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
-
 .back-btn {
-  background: none;
+  background: var(--card);
   border: none;
-  font-size: 16px;
-  color: #4CAF50;
+  font-size: 15px;
+  color: var(--primary);
   cursor: pointer;
-  padding: 5px 10px;
+  padding: 6px 14px 6px 10px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-xs);
+  transition: transform 0.12s;
 }
-
-.page-title {
-  font-size: 18px;
-  font-weight: 500;
-  margin-left: 12px;
-}
+.back-btn:active { transform: scale(0.95); }
+.page-title { font-size: 18px; font-weight: 600; margin-left: 12px; color: var(--text-1); }
 
 /* 用餐类型 */
 .meal-type-section {
-  background: #fff;
+  background: var(--card);
   padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-xs);
 }
-
-.section-title {
-  font-size: 14px;
-  color: #666;
-  margin-bottom: 12px;
-}
-
-.meal-types {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
+.section-title { font-size: 13px; color: var(--text-3); margin-bottom: 12px; font-weight: 500; }
+.meal-types { display: flex; flex-wrap: wrap; gap: 8px; }
 .meal-type {
   padding: 8px 16px;
-  background: #f5f5f5;
-  border-radius: 20px;
+  background: var(--fill);
+  border-radius: 999px;
   font-size: 14px;
+  color: var(--text-2);
   cursor: pointer;
+  transition: all 0.2s;
 }
-
-.meal-type.active {
-  background: #4CAF50;
-  color: #fff;
-}
+.meal-type.active { background: var(--primary-gradient); color: #fff; box-shadow: 0 4px 12px rgba(67,160,71,0.3); }
 
 /* 记录日期 */
 .record-date-section {
-  background: #fff;
+  background: var(--card);
   padding: 16px;
-  border-radius: 8px;
-  margin-bottom: 16px;
+  border-radius: var(--radius-lg);
+  margin-bottom: 14px;
+  box-shadow: var(--shadow-xs);
 }
-
 .date-pickable {
   position: relative;
   display: flex;
@@ -492,210 +477,132 @@ onMounted(() => {
   cursor: pointer;
   padding: 4px 0;
 }
-
-.date-main {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-}
-
-.date-sub {
-  font-size: 13px;
-  color: #999;
-}
-
+.date-main { font-size: 16px; font-weight: 600; color: var(--text-1); }
+.date-sub { font-size: 13px; color: var(--text-3); }
 .date-native-input {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  opacity: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  opacity: 0; border: none; background: transparent; cursor: pointer;
 }
 
 /* 搜索 */
-.search-section {
-  margin-bottom: 12px;
-}
-
+.search-section { margin-bottom: 12px; }
 .search-input {
   width: 100%;
   padding: 12px 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
   font-size: 14px;
+  color: var(--text-1);
+  background: var(--card);
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-
-.search-input:focus {
-  border-color: #4CAF50;
-}
+.search-input::placeholder { color: var(--text-4); }
+.search-input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px var(--primary-100); }
 
 /* 食物列表 */
 .food-list {
-  background: #fff;
-  border-radius: 8px;
-  padding: 8px 0;
-  max-height: 280px;
+  background: var(--card);
+  border-radius: var(--radius-lg);
+  padding: 6px 0;
+  max-height: 300px;
   overflow-y: auto;
+  box-shadow: var(--shadow-xs);
 }
-
-.loading, .empty {
-  text-align: center;
-  padding: 30px;
-  color: #999;
-}
-
-.empty-tip {
-  font-size: 13px;
-  color: #4CAF50;
-  margin-top: 8px;
-}
+.loading, .empty { text-align: center; padding: 32px; color: var(--text-3); }
+.empty-tip { font-size: 13px; color: var(--primary); margin-top: 8px; }
 
 .food-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--divider);
   cursor: pointer;
+  transition: background 0.15s;
 }
-
-.food-item:last-child {
-  border-bottom: none;
-}
-
-.food-item.selected {
-  background: #E8F5E9;
-}
-
-.food-info {
-  flex: 1;
-}
-
-.food-name {
-  font-size: 16px;
-  color: #333;
-}
-
-.food-brand {
-  font-size: 12px;
-  color: #999;
-  margin-top: 2px;
-}
-
-.food-serving {
-  font-size: 12px;
-  color: #666;
-  margin-top: 4px;
-}
-
-.has-units {
-  color: #2196F3;
-  font-size: 11px;
-}
-
-.food-calories {
-  font-size: 14px;
-  color: #4CAF50;
-  font-weight: 500;
-}
+.food-item:last-child { border-bottom: none; }
+.food-item.selected { background: var(--primary-50); }
+.food-info { flex: 1; min-width: 0; }
+.food-name { font-size: 15px; color: var(--text-1); font-weight: 500; }
+.food-brand { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.food-serving { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.has-units { color: #3b82f6; font-size: 11px; }
+.food-calories { font-size: 14px; color: var(--primary); font-weight: 600; flex-shrink: 0; margin-left: 12px; }
 
 /* 食用量 */
 .serving-section {
-  background: #fff;
+  background: var(--card);
   padding: 16px;
-  border-radius: 8px;
-  margin-top: 16px;
+  border-radius: var(--radius-lg);
+  margin-top: 14px;
+  box-shadow: var(--shadow-xs);
 }
-
-.amount-input-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-
+.amount-input-group { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
 .amount-input {
-  width: 100px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  width: 110px;
+  padding: 11px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 16px;
+  color: var(--text-1);
+  background: var(--bg-soft);
   outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
-
+.amount-input:focus { border-color: var(--primary); background: #fff; box-shadow: 0 0 0 4px var(--primary-100); }
 .unit-select {
-  padding: 10px 12px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
+  padding: 11px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
   font-size: 14px;
+  color: var(--text-1);
+  background: var(--bg-soft);
   outline: none;
-  background: #fff;
   cursor: pointer;
-  min-width: 80px;
+  min-width: 90px;
 }
-
 .unit-hint {
   font-size: 12px;
-  color: #666;
+  color: var(--text-2);
   margin-bottom: 12px;
   padding: 8px 12px;
-  background: #f5f5f5;
-  border-radius: 6px;
+  background: var(--fill);
+  border-radius: var(--radius-sm);
 }
-
-.unit-total {
-  color: #4CAF50;
-  font-weight: 500;
-}
+.unit-total { color: var(--primary); font-weight: 600; }
 
 .nutrition-preview {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  background: #f9f9f9;
-  padding: 12px;
-  border-radius: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  background: var(--fill);
+  padding: 14px;
+  border-radius: var(--radius);
 }
-
 .preview-item {
   display: flex;
   flex-direction: column;
-  min-width: 80px;
+  gap: 3px;
 }
-
-.preview-label {
-  font-size: 12px;
-  color: #666;
-}
-
-.preview-value {
-  font-size: 16px;
-  font-weight: 500;
-  color: #333;
-}
+.preview-label { font-size: 12px; color: var(--text-3); }
+.preview-value { font-size: 17px; font-weight: 700; color: var(--text-1); }
 
 /* 保存按钮 */
-.save-section {
-  margin-top: 24px;
-}
-
+.save-section { margin-top: 24px; }
 .btn-save {
   width: 100%;
-  padding: 14px;
-  background: #4CAF50;
+  padding: 15px;
+  background: var(--primary-gradient);
   color: #fff;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius);
   font-size: 16px;
+  font-weight: 600;
+  box-shadow: var(--shadow-primary);
   cursor: pointer;
+  transition: transform 0.12s;
 }
-
-.btn-save:disabled {
-  background: #ccc;
-  cursor: not-allowed;
-}
+.btn-save:active { transform: scale(0.98); }
+.btn-save:disabled { background: var(--text-4); box-shadow: none; cursor: not-allowed; }
 </style>
